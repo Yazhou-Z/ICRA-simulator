@@ -1,5 +1,5 @@
 from motion import kernal 
 
-test_game = kernal(car_num = 4, render = True)
+test_game = kernal(car_num = 4, render = True, record = False)
 test_game.reset()
 test_game.play()
