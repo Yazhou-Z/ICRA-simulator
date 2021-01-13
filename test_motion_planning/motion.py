@@ -373,14 +373,15 @@ class kernal(object):  # gym.Env
         self.sp_ff = np.zeros([map_width, map_length], dtype='uint32')
         self.sp_last = np.zeros([map_width, map_length,2], dtype='uint32')
         seq=np.zeros([map_width*map_length*5,2],dtype='uint32')
-        f=np.zeros([map_width*map_length*5,2],dtype='float')
+        f=np.zeros([map_width,map_length],dtype='float')
         for i in range(f.shape[0]):
             for j in range(f.shape[1]):f[i][j]=1e15
 
-        x,y=p_begin
+        x,y=p_begin[0],p_begin[1]
+        print(x,y)
         l,r,c=0,1,[(0,1),(0,-1),(1,0),(-1,0)]
         seq[r]=[x,y]
-        f[x]=0
+        f[x][y]=0
         while (l<r and r<map_width*map_length*5-4):
             l+=1
             for dx,dy in c:
@@ -407,7 +408,12 @@ class kernal(object):  # gym.Env
             d+=1
             z[d]=(x,y)
         if (ff[p_end[0]][p_end[1]]==0):
-            for i in range()
+            for i in range(max(p_end[0]-self.sp_delta_dir,1),min(p_end[0]+self.sp_delta_dir,500)):
+                for j in range(max(p_end[1]-self.sp_delta_dir,1),min(p_end[1]+self.sp_delta_dir,800)):
+                    if (ff[i][j]!=0):
+                        p_end=[i,j]
+                        break
+                if (ff[p_end[0]][p_end[1]]!=0):break
         if (ff[p_end[0]][p_end[1]] == 0):
             print("no such path")
             return "no_such_path"
