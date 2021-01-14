@@ -286,9 +286,9 @@ class kernal(object):  # gym.Env
             self.font = pygame.font.SysFont('info', 20)
             self.clock = pygame.time.Clock()
 
-            map_width, map_length = 810, 810
+            map_width, map_length = 135, 210
             self.sp_map = np.zeros([map_width, map_length], dtype='uint32')
-            self.sp_value = np.zeros([map_width, map_length], dtype='float')
+            self.sp_value = np.zeros([map_width, map_length], dtype='float16')
             self.sp_flag = np.zeros([map_width, map_length], dtype='uint32')
             self.sp_ff = np.zeros([map_width, map_length], dtype='uint32')
             self.sp_route = np.zeros([map_width * map_length * 5, 2], dtype='uint32')
@@ -300,17 +300,17 @@ class kernal(object):  # gym.Env
             self.sp_angle_upperbound = 0
             self.sp_v_lowerbound = -0.001
             self.sp_v_upperbound = 0.01
-            self.sp_Penalty_value = np.zeros(map_width * map_length * 5, dtype='float')
+            self.sp_Penalty_value = np.zeros(map_width * map_length * 5, dtype='float16')
             self.sp_circular_obstacles = []
             self.sp_delta_dir=20
 
     def sp_init(self,car_th):
-        map_width, map_length=810,810
+        map_width, map_length = 135, 210
         l = 0
         r = 0
         c = [(0, 1), (0, -1), (1, 0), (-1, 0)]
         self.sp_map=np.zeros([map_width,map_length],dtype='uint32')
-        self.sp_value=np.zeros([map_width,map_length],dtype='float')
+        self.sp_value=np.zeros([map_width,map_length],dtype='float16')
         self.sp_flag=np.zeros([map_width,map_length],dtype='uint32')
         seq=np.zeros([map_width*map_length*5,2],dtype='uint32')
 
@@ -329,9 +329,11 @@ class kernal(object):  # gym.Env
             add_circular_obstacles(xx-dd, yy-dd, xx, yy)
 
         for i in range(self.barriers.shape[0]):
-            f=self.barriers[i]
-            for ii in range(math.floor(f[0]), math.ceil(f[1])):
-                for jj in range(math.floor(f[2]), math.ceil(f[3])):
+            #print(self.barriers[i])
+            f=self.barriers[i]/4
+            #print(f)
+            for ii in range(math.floor(f[2]), math.ceil(f[3])):
+                for jj in range(math.floor(f[0]), math.ceil(f[1])):
                     if (self.sp_map[ii][jj] == 0):
                         self.sp_map[ii][jj] = 1
                         r += 1
@@ -339,7 +341,7 @@ class kernal(object):  # gym.Env
             sp_circular_obstacles(self.barriers[i])
         for i in range(self.cars.shape[0]):
             if (i!=car_th):
-                f=np.array([self.cars[i][0]-30,self.cars[i][0]+30,self.cars[i][1]-30,self.cars[i][1]+30])
+                f=np.array([self.cars[i][0]-30,self.cars[i][0]+30,self.cars[i][1]-30,self.cars[i][1]+30])/4
                 for ii in range(math.floor(f[0]), math.ceil(f[1])):
                     for jj in range(math.floor(f[2]), math.ceil(f[3])):
                         if (self.sp_map[ii][jj] == 0):
@@ -350,55 +352,58 @@ class kernal(object):  # gym.Env
             l+=1
             for dx,dy in c:
                 x,y=dx+seq[l][0],dy+seq[l][1]
-                if (x<1 or y<1 or x>500 or y>800):continue
+                if (x<1 or y<1 or x>125 or y>200):continue
                 if (self.sp_flag[x][y]==0):
                     self.sp_flag[x][y]=1
                     self.sp_value[x][y]=self.sp_value[seq[l][0]][seq[l][1]]+1
                     r=r+1
                     seq[r]=[x,y]
 
-        for i in range(1,500+1):
-            for j in range(1,800+1):
+        for i in range(1,125+1):
+            for j in range(1,200+1):
                 if (self.sp_value[i][j]<=25):
                     self.sp_map[i][j]=1
                 else:self.sp_value[i][j]-=25;
-        self.sp_value=200/(self.sp_value+1e-5)+1
+        self.sp_value=0/(self.sp_value+1e-3)+1
 
     def sp_calc(self,p_begin):
-        map_width, map_length = 810, 810
 
-        self.sp_map = np.zeros([map_width, map_length], dtype='uint32')
-        self.sp_value = np.zeros([map_width, map_length], dtype='float')
+        map_width, map_length = 135, 210
+
         self.sp_flag = np.zeros([map_width, map_length], dtype='uint32')
         self.sp_ff = np.zeros([map_width, map_length], dtype='uint32')
         self.sp_last = np.zeros([map_width, map_length,2], dtype='uint32')
         seq=np.zeros([map_width*map_length*5,2],dtype='uint32')
-        f=np.zeros([map_width,map_length],dtype='float')
+        f=np.zeros([map_width,map_length],dtype='float16')
         for i in range(f.shape[0]):
             for j in range(f.shape[1]):f[i][j]=1e15
 
-        x,y=p_begin[0],p_begin[1]
+        x,y=int(p_begin[0]/4),int(p_begin[1]/4)
         print(x,y)
         l,r,c=0,1,[(0,1),(0,-1),(1,0),(-1,0)]
         seq[r]=[x,y]
         f[x][y]=0
+        #print(self.sp_value)
         while (l<r and r<map_width*map_length*5-4):
             l+=1
+            #if (l%10000==0):print(l)
+            #print(seq[l],self.sp_ff[seq[l][0]][seq[l][1]],f[seq[l][0]][seq[l][1]])
             for dx,dy in c:
                 x,y=seq[l][0]+dx,seq[l][1]+dy
-                if (x<1 or y<1 or x>500 or y>800):continue
-                if (self.sp_map[x][y] == 0 and f[x][y] + 1e-5 > f[seq[l][0]][seq[l][1]] + self.sp_value[x][y]):
+                if (x<1 or y<1 or x>125 or y>200):continue
+                if (self.sp_map[x][y] == 0 and f[x][y] + 1e-3 > f[seq[l][0]][seq[l][1]] + self.sp_value[x][y]):
+                    #print(f[x][y],f[seq[l][0]][seq[l][1]] + self.sp_value[x][y])
                     f[x][y] = f[seq[l][0]][seq[l][1]] + self.sp_value[x][y]
                     self.sp_last[x][y]=seq[l]
                     self.sp_ff[x][y]=1
                     if (self.sp_flag[x][y]==0):
-                        self.sp_flag[x][u]=1
+                        self.sp_flag[x][y]=1
                         r+=1
                         seq[r]=[x,y]
             self.sp_flag[seq[l][0]][seq[l][1]]=0
-
+        print(r)
     def sp_follow_the_road(self,p_begin,p_end):
-        map_width, map_length = 810, 810
+        map_width, map_length = 210, 135
 
         self.sp_calc(p_begin)
         z,d=[],0
@@ -407,14 +412,14 @@ class kernal(object):  # gym.Env
             if (self.sp_last[i][j][1]!=0):dfs(last[x][y][0],last[x][y][1])
             d+=1
             z[d]=(x,y)
-        if (ff[p_end[0]][p_end[1]]==0):
+        if (self.sp_ff[p_end[0]][p_end[1]]==0):
             for i in range(max(p_end[0]-self.sp_delta_dir,1),min(p_end[0]+self.sp_delta_dir,500)):
                 for j in range(max(p_end[1]-self.sp_delta_dir,1),min(p_end[1]+self.sp_delta_dir,800)):
                     if (ff[i][j]!=0):
                         p_end=[i,j]
                         break
                 if (ff[p_end[0]][p_end[1]]!=0):break
-        if (ff[p_end[0]][p_end[1]] == 0):
+        if (self.sp_ff[p_end[0]][p_end[1]] == 0):
             print("no such path")
             return "no_such_path"
         dfs(p_end[0],p_end[1])
