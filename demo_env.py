@@ -6,7 +6,8 @@ def demo():
     state = env.reset()
     steps = 0
     while True:
-        env.get_order()
+        if env.get_order():
+            return
         action = env.orders
         state, reward, done, info = env.step(action)
         steps += 1
