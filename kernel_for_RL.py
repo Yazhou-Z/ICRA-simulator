@@ -554,13 +554,12 @@ class kernal(object): # gym.Env
         if pressed[pygame.K_4]: self.n = 3
         '''
         self.orders[self.n] = 0
-        a0= random.choice([0,1,2,3])
-        b = random.choice([1,-1])
-        c = random.choice([0,1])
-        a1 = random.choice([4,5,6,7])
-        d = random.choice([0,1])
-        if d == 0: self.orders[self.n,a0] += b
-        else: self.orders[self.n,a1] += c
+        order_name = random.choice([0,1,2,3,4,5,6,7])
+        if order_name < 4:
+            order  = random.choice([1,-1])
+        else:
+            order = random.choice([0,1])
+        self.orders[self.n,order_name] += order
         '''
         if pressed[pygame.K_w]: self.orders[self.n, 0] += 1 # Forward
         if pressed[pygame.K_s]: self.orders[self.n, 0] -= 1 # Backward
