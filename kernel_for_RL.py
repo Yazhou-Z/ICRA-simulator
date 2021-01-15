@@ -13,24 +13,7 @@ class bullet(object):
         self.speed = speed
         self.angle = angle
         self.owner = owner
-<<<<<<< HEAD
-'''
-=======
 
->>>>>>> 8aaa143632d61ad129ac88089e7dc380eeddec16
-class state(object):
-    def __init__(self, time, agents, compet_info, done=False, detect=None, vision=None):
-        self.time = time
-        self.agents = agents
-        self.compet = compet_info
-        self.done = done
-        self.detect = detect
-        self.vision = vision
-<<<<<<< HEAD
-'''
-=======
-
->>>>>>> 8aaa143632d61ad129ac88089e7dc380eeddec16
 class record(object):
     def __init__(self, time, cars, compet_info, detect, vision, bullets):
         self.time = time
