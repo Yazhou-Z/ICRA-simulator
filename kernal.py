@@ -3,8 +3,8 @@
 kernal v1.0
 '''
 import numpy as np
-import gym
-# from gym.utils import seeding, EzPickle
+import pygame
+# import gym
 
 class bullet(object):
     def __init__(self, center, angle, speed, owner):
@@ -38,12 +38,10 @@ class g_map(object):
         self.areas = areas
         self.barriers = barriers
 
-class record_player(object): # 复现之前的游戏
+class record_player(object):
     def __init__(self):
         self.map_length = 800
         self.map_width = 500
-        global pygame
-        import pygame
         pygame.init()
         self.screen = pygame.display.set_mode((self.map_length, self.map_width)) # creates window
         pygame.display.set_caption('RM AI Challenge Simulator')
@@ -197,7 +195,7 @@ class record_player(object): # 复现之前的游戏
              [-6.5, 30], [6.5, 30]])
         return [np.matmul(x, rotate_matrix) + car[1:3] for x in xs]
 
-class kernal(gym.Env):
+class kernal(object): # gym.Env
     def __init__(self, car_num, render=False, record=True):# map, car, render
         
         self.car_num = car_num
@@ -235,8 +233,6 @@ class kernal(gym.Env):
 
 
         if render:
-            global pygame
-            import pygame
             pygame.init()
             self.screen = pygame.display.set_mode((self.map_length, self.map_width))
             pygame.display.set_caption('RM AI Challenge Simulator')
@@ -273,13 +269,9 @@ class kernal(gym.Env):
             pygame.font.init()
             self.font = pygame.font.SysFont('info', 20)
             self.clock = pygame.time.Clock()
-    '''
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
-    '''
+
     def reset(self): # state(self.time, self.cars, self.compet_info, self.time <= 0)
-        self.time = 180 
+        self.time = 10 
         self.orders = np.zeros((4, 8), dtype='int8')
         self.acts = np.zeros((self.car_num, 8),dtype='float32')
         self.obs = np.zeros((self.car_num, 17), dtype='float32')
@@ -296,17 +288,18 @@ class kernal(gym.Env):
                          [1, 750, 50, 0, 0, 0, 2000, 0, 0, 1, 0, 0, 0, 0, 0],
                          [0, 750, 450, 0, 0, 0, 2000, 0, 0, 1, 0, 0, 0, 0, 0]], dtype='float32')
         self.cars = cars[0:self.car_num]
-        prev_reward = None
+        self.prev_reward = None
+        self.reward = None
         return state(self.time, self.cars, self.compet_info, self.time <= 0)
 
     def play(self): # get order, one_epoch
         # human play mode, only when render == True
         assert self.render, 'human play mode, only when render == True'
-        if not self.epoch % 10:
-            if self.get_order(): # if event.type == pygame.QUIT 
-                break
-        self.one_epoch()
-        return state(self.time, self.cars, self.compet_info, self.time <= 0, self.detect, self.vision)
+        while True:
+            if not self.epoch % 10:
+                if self.get_order(): # if event.type == pygame.QUIT
+                    return state(self.time, self.cars, self.compet_info, self.time <= 0, self.detect, self.vision)
+            self.one_epoch()
   
     def step(self, orders):
         self.orders[0:self.car_num] = orders
@@ -317,15 +310,15 @@ class kernal(gym.Env):
  
     def eachstep(self):
         reward = 0
-        state = play()
-        shaping = # related to cars       
-        reward = shaping -self.prev_reward
-        self.prev_reward = reward 
-        done = self.state[3]
+        state = self.play()
+        shaping = None # related to cars       
+        self.reward = shaping - self.prev_reward
+        self.prev_reward = self.reward 
+        done = self.time <=0
         if done:
-            #reward...
+            reward = 100
         
-        return state, reward, done, {}
+        return reward, done
  
     def one_epoch(self):
         for n in range(self.car_num):

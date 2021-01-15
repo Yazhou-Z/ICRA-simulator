@@ -3,6 +3,8 @@
 kernal v1.0
 '''
 import numpy as np
+import pygame
+# import gym
 
 class bullet(object):
     def __init__(self, center, angle, speed, owner):
@@ -40,10 +42,8 @@ class record_player(object):
     def __init__(self):
         self.map_length = 800
         self.map_width = 500
-        global pygame
-        import pygame
         pygame.init()
-        self.screen = pygame.display.set_mode((self.map_length, self.map_width))
+        self.screen = pygame.display.set_mode((self.map_length, self.map_width)) # creates window
         pygame.display.set_caption('RM AI Challenge Simulator')
         self.gray = (180, 180, 180)
         self.red = (190, 20, 20)
@@ -124,7 +124,7 @@ class record_player(object):
             self.clock.tick(200)
 
     def one_epoch(self):
-        self.screen.fill(self.gray)
+        self.screen.fill(self.gray) # fill it with grey
         for i in range(len(self.barriers_rect)):
             self.screen.blit(self.barriers_img[i], self.barriers_rect[i])
         for i in range(len(self.areas_rect)):
@@ -195,8 +195,9 @@ class record_player(object):
              [-6.5, 30], [6.5, 30]])
         return [np.matmul(x, rotate_matrix) + car[1:3] for x in xs]
 
-class kernal(object):
-    def __init__(self, car_num, render=False, record=True):
+class kernal(object): # gym.Env
+    def __init__(self, car_num, render=False, record=True):# map, car, render
+        
         self.car_num = car_num
         self.render = render
         # below are params that can be challenged depended on situation
@@ -227,9 +228,11 @@ class kernal(object):
                                   [635.0, 660.0, 140.0, 240.0],
                                   [325.0, 350.0, 400.0, 500.0],
                                   [450.0, 475.0, 0.0, 100.0]], dtype='float32')
+
+        self.prev_reward = None
+
+
         if render:
-            global pygame
-            import pygame
             pygame.init()
             self.screen = pygame.display.set_mode((self.map_length, self.map_width))
             pygame.display.set_caption('RM AI Challenge Simulator')
@@ -267,8 +270,8 @@ class kernal(object):
             self.font = pygame.font.SysFont('info', 20)
             self.clock = pygame.time.Clock()
 
-    def reset(self):
-        self.time = 180
+    def reset(self): # state(self.time, self.cars, self.compet_info, self.time <= 0)
+        self.time = 10 
         self.orders = np.zeros((4, 8), dtype='int8')
         self.acts = np.zeros((self.car_num, 8),dtype='float32')
         self.obs = np.zeros((self.car_num, 17), dtype='float32')
@@ -276,7 +279,7 @@ class kernal(object):
         self.vision = np.zeros((self.car_num, self.car_num), dtype='int8')
         self.detect = np.zeros((self.car_num, self.car_num), dtype='int8')
         self.bullets = []
-        self.epoch = 0
+        self.epoch = 0 
         self.n = 0
         self.dev = False
         self.memory = []
@@ -285,24 +288,38 @@ class kernal(object):
                          [1, 750, 50, 0, 0, 0, 2000, 0, 0, 1, 0, 0, 0, 0, 0],
                          [0, 750, 450, 0, 0, 0, 2000, 0, 0, 1, 0, 0, 0, 0, 0]], dtype='float32')
         self.cars = cars[0:self.car_num]
+        self.prev_reward = None
+        self.reward = None
         return state(self.time, self.cars, self.compet_info, self.time <= 0)
 
-    def play(self):
+    def play(self): # get order, one_epoch
         # human play mode, only when render == True
         assert self.render, 'human play mode, only when render == True'
         while True:
             if not self.epoch % 10:
-                if self.get_order():
-                    break
+                if self.get_order(): # if event.type == pygame.QUIT
+                    return state(self.time, self.cars, self.compet_info, self.time <= 0, self.detect, self.vision)
             self.one_epoch()
-
+  
     def step(self, orders):
         self.orders[0:self.car_num] = orders
         self.orders = orders
         for _ in range(10):
             self.one_epoch()
         return state(self.time, self.cars, self.compet_info, self.time <= 0, self.detect, self.vision)
-
+ 
+    def eachstep(self):
+        reward = 0
+        state = self.play()
+        shaping = None # related to cars       
+        self.reward = shaping - self.prev_reward
+        self.prev_reward = self.reward 
+        done = self.time <=0
+        if done:
+            reward = 100
+        
+        return reward, done
+ 
     def one_epoch(self):
         for n in range(self.car_num):
             if not self.epoch % 10:
@@ -310,7 +327,7 @@ class kernal(object):
             # move car one by one
             self.move_car(n)
             if not self.epoch % 20:
-                if self.cars[n, 5] >= 720:
+                if self.cars[n, 5] >= 720: # 5:枪口热量 6:血量
                     self.cars[n, 6] -= (self.cars[n, 5] - 720) * 40
                     self.cars[n, 5] = 720
                 elif self.cars[n, 5] > 360:
@@ -318,8 +335,8 @@ class kernal(object):
                 self.cars[n, 5] -= 12 if self.cars[n, 6] >= 400 else 24
             if self.cars[n, 5] <= 0: self.cars[n, 5] = 0
             if self.cars[n, 6] <= 0: self.cars[n, 6] = 0
-            if not self.acts[n, 5]: self.acts[n, 4] = 0
-        if not self.epoch % 200:
+            if not self.acts[n, 5]: self.acts[n, 4] = 0 # 5:连发 6:单发
+        if not self.epoch % 200: # 200epoch = 1s
                 self.time -= 1
                 if not self.time % 60:
                     self.compet_info[:, 0:3] = [2, 1, 0]
@@ -601,7 +618,7 @@ class kernal(object):
             if self.compet_info[i, 3] > 0:
                 self.compet_info[i, 3] -= 1
 
-    def cross(self, p1, p2, p3):
+    def cross(self, p1, p2, p3): # 叉乘
         # this part code came from: https://www.jianshu.com/p/a5e73dbc742a
         x1 = p2[0] - p1[0]
         y1 = p2[1] - p1[1]
@@ -609,7 +626,7 @@ class kernal(object):
         y2 = p3[1] - p1[1]
         return x1 * y2 - x2 * y1 
 
-    def segment(self, p1, p2, p3, p4):
+    def segment(self, p1, p2, p3, p4): # 判断p1, p2两线和p3, p4 两线是否交叉
         # this part code came from: https://www.jianshu.com/p/a5e73dbc742a
         if (max(p1[0], p2[0])>=min(p3[0], p4[0]) and max(p3[0], p4[0])>=min(p1[0], p2[0])
         and max(p1[1], p2[1])>=min(p3[1], p4[1]) and max(p3[1], p4[1])>=min(p1[1], p2[1])):
@@ -641,7 +658,7 @@ class kernal(object):
             if self.segment(l1, l2, p1, p2) or self.segment(l1, l2, p3, p4): return True
         return False
 
-    def get_lidar_vision(self):
+    def get_lidar_vision(self): 
         for n in range(self.car_num):
             for i in range(self.car_num-1):
                 x, y = self.cars[n-i-1, 1:3] - self.cars[n, 1:3]
@@ -658,7 +675,7 @@ class kernal(object):
                     else: self.detect[n, n-i-1] = 1
                 else: self.detect[n, n-i-1] = 0
 
-    def get_camera_vision(self):
+    def get_camera_vision(self): # map 点云
         for n in range(self.car_num):
             for i in range(self.car_num-1):
                 x, y = self.cars[n-i-1, 1:3] - self.cars[n, 1:3]
@@ -759,13 +776,11 @@ areas_index = [[{'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}, 
                 {'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}, # 1 supply red
                 {'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}, # 2 start 0 red
                 {'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}], # 3 start 1 red
-
                [{'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}, # 0 bonus blue
                 {'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}, # 1 supply blue
                 {'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}, # 2 start 0 blue
                 {'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}]] # 3 start 1 blue
                             
-
 barriers_index = [{'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}, # 0 horizontal
                   {'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}, # 1 horizontal
                   {'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}, # 2 horizontal
@@ -773,19 +788,13 @@ barriers_index = [{'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}
                   {'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}, # 4 vertical
                   {'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}, # 5 vertical
                   {'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}] # 6 vertical
-
 armor编号：0：前，1：右，2：后，3左，车头为前
-
 act_index = {'rotate_speed': 0, 'yaw_speed': 1, 'x_speed': 2, 'y_speed': 3, 'shoot': 4, 'shoot_mutiple': 5, 'supply': 6,
              'auto_aim': 7}
-
 bullet_speed: 12.5
-
-
 compet_info_index = {'red': {'supply': 0, 'bonus': 1, 'bonus_stay_time(deprecated)': 2, 'bonus_time': 3}, 
                      'blue': {'supply': 0, 'bonus': 1, 'bonus_stay_time(deprecated)': 2, 'bonus_time': 3}}
 int, shape: (2, 4)
-
 order_index = ['x', 'y', 'rotate', 'yaw', 'shoot', 'supply', 'shoot_mode', 'auto_aim']
 int, shape: (8,)
     x, -1: back, 0: no, 1: head
@@ -795,12 +804,22 @@ int, shape: (8,)
     shoot, 0: not shoot, 1: shoot
     yaw, -1: anti-clockwise, 0: no, 1: clockwise, for gimbal
     auto_aim, 0: not, 1: auto aim
-
 car_index = {"owner": 0, 'x': 1, 'y': 2, "angle": 3, "yaw": 4, "heat": 5, "hp": 6, 
              "freeze_time": 7, "is_supply": 8, "can_shoot": 9, 'bullet': 10, 'stay_time': 11,
              'wheel_hit': 12, 'armor_hit': 13, 'car_hit': 14}
 float, shape: (14,)
-
 '''
 
     
+© 2021 GitHub, Inc.
+Terms
+Privacy
+Security
+Status
+Help
+Contact GitHub
+Pricing
+API
+Training
+Blog
+About
