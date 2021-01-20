@@ -5,26 +5,9 @@
 //#include<Python.h>
 #ifndef ICRA_SHORTEST_PATH_SPFA_H
 #define ICRA_SHORTEST_PATH_SPFA_H
-#define N 510
-#define M 810
+#define N 810
+#define M 510
 using namespace std;
-
-/*
-class point {
-    int x,y;
-    point(int a,int b){
-        x=a;y=b;
-    }
-    point operator+(const point &a){
-        point box;
-        box.x = this->x + a.x;
-        box.y = this->y + a.y;
-        return box;
-    }
-};
-pair<int,int> operator+(const pair<int,int> &x, pair<int,int> &y){
-    return make_pair(x.first+y.first,x.second+y.second);
-}*/
 class SPFA {
 private:
     const int C=200;
@@ -36,8 +19,9 @@ private:
     pair<int,int> zz[N*M];
     int top_zz;
     int debug_modle=0;
-    pair<int,int>seq[N*M*20],last[M][M],c[4],dd,z[N*M];
+    pair<int,int>seq[N*M*5],last[N][M],c[4],dd,z[N*M];
     void dfs(int x,int y){
+      cout<<x<<' '<<y<<' '<<ff[x][y]<<' '<<f[x][y]<<endl;
         if (last[x][y].first!=0)
             dfs(last[x][y].first,last[x][y].second);
         z[++d]=make_pair(x,y);
@@ -67,9 +51,11 @@ private:
         }
         for (int i = 1; i <= n; i++)
             for (int j = 1; j <= m; j++)value[i][j] = max(1.0,200-value[i][j]*2);
+        for (int i=0;i<4;i++)cout<<c[i].first<<' '<<c[i].second<<endl;
     }
 public:
     SPFA(int x,int y){
+        cout<<x<<' '<<y<<endl;
         memset(s,0,sizeof(s));
         memset(value,0,sizeof(value));
         memset(ff,0,sizeof(ff));
@@ -87,13 +73,13 @@ public:
     }
     void set_begin_end(int X,int Y,int XX,int YY){
         x=X;y=Y;xx=XX;yy=YY;
-        //cout<<x<<' '<<y<<' '<<xx<<' '<<yy<<endl;
+        cout<<"begin&end:"<<x<<' '<<y<<' '<<xx<<' '<<yy<<endl;
     }
     void add_obstables(int X,int XX,int Y,int YY){
-        //cout<<X<<' '<<XX<<' '<<Y<<' '<<YY<<endl;
         if (X>XX)swap(X,XX);if (Y>YY)swap(Y,YY);
         X-=30;Y-=30;XX+=30;YY+=30;
-        X=min(X,0);XX=min(X,n);Y=max(Y,0);YY=min(YY,m);
+        X=max(X,1);XX=min(XX,n);Y=max(Y,1);YY=min(YY,m);
+        //cout<<X<<' '<<XX<<' '<<Y<<' '<<YY<<endl;
         for (int i=X;i<=XX;i++)
             for (int j=Y;j<=YY;j++)s[i][j]='1';
     }
@@ -105,8 +91,10 @@ public:
         memset(flag,0,sizeof(flag));
         memset(ff,0,sizeof(ff));memset(last,0,sizeof(last));
         f[x][y]=0;
-        while (l<r&&r<20*N*M-4){
-            l++;for (int i=0;i<4;i++){
+        while (l!=r){
+            l++;if (l==5*N*M-4)l=1;
+            for (int i=0;i<4;i++){
+                pair<int,int> dd;
                 dd.first = seq[l].first + c[i].first;
                 dd.second = seq[l].second + c[i].second;
                 if (s[dd.first][dd.second]=='0'&&f[dd.first][dd.second]+eps>
@@ -115,11 +103,13 @@ public:
                     last[dd.first][dd.second]=seq[l];
                     ff[dd.first][dd.second]=1;
                     if (!flag[dd.first][dd.second]){
-                        seq[++r]=dd;flag[dd.first][dd.second]=1;
+                        r++;if (r==5*N*M-4)r=1;
+                        seq[r]=dd;flag[dd.first][dd.second]=1;
                     }
                 }
             }flag[seq[l].first][seq[l].second]=0;
         }
+        //for (int i=0;i<4;i++)cout<<c[i].first<<' '<<c[i].second<<endl;
         if (ff[xx][yy]){
             d=0;dfs(xx,yy);
 
@@ -135,8 +125,8 @@ public:
                 }
             }return 1;
         }else{//=50
-            for (int i=max(0,xx-50);i<=min(n,xx+50);i++)
-                for (int j=max(0,yy-50);j<=min(m,yy+50);j++)
+            for (int i=max(1,xx-50);i<=min(n,xx+50);i++)
+                for (int j=max(1,yy-50);j<=min(m,yy+50);j++)
                     if (ff[i][j]){
                         xx=i;yy=j;
                         d=0;dfs(xx,yy);
