@@ -300,8 +300,8 @@ class kernal(object):  # gym.Env
             self.sp_target_global = None
             self.sp_angle_lowerbound = -1
             self.sp_angle_upperbound = 1
-            self.sp_v_lowerbound = 0.01
-            self.sp_v_upperbound = 0.02
+            self.sp_v_lowerbound = 0.1
+            self.sp_v_upperbound = 0.2
             self.sp_Penalty_value = np.zeros(1000, dtype='float16')
             self.sp_circular_obstacles = []
             self.sp_delta_dir=20
@@ -397,7 +397,7 @@ class kernal(object):  # gym.Env
         #max_speed=min(3,max(p_target_local[2],1/Penalty_value))#计算最大速度
         #print("max_speed",max_speed)
         car_x,car_y=self.cars[car_th][1],self.cars[car_th][2]
-        max_speed=max(0.5,norm(car_x-self.sp_route[self.sp_route_th][0],car_y-self.sp_route[self.sp_route_th][1])/100)
+        max_speed=max(3,norm(car_x-self.sp_route[self.sp_route_th][0],car_y-self.sp_route[self.sp_route_th][1])/100)
         PI=math.acos(-1)
         #print(self.cars[car_th])
         car_theta=self.cars[car_th][3]*PI/180
@@ -466,7 +466,7 @@ class kernal(object):  # gym.Env
         for i in range(2):X+=[[self.cars[i][1],self.cars[i][2]]]
         #print(X)
         goals=[[0,0],[0,0]]
-        V_max=[0.5]*2
+        V_max=[3]*2
         #goals[car_th]=[self.sp_route[self.sp_route_th][0],self.sp_route[self.sp_route_th][1]]
         goals[car_th]=p_target_local
         V=[]
@@ -500,7 +500,7 @@ class kernal(object):  # gym.Env
         if (p_target_global == None or clc(self.sp_target_global[0], self.sp_target_global[1], self.cars[car_th][1],
                                            self.cars[car_th][2]) < 400):
             # self.sp_target_global =  [random.randint(1,500) , random.randint(1,800)]
-            self.sp_target_global = [750, 50]
+            self.sp_target_global = [750, 450]
             p_target_global = self.sp_target_global
             print("we will get:", p_target_global[0], p_target_global[1])
             self.sp_tag = 1
