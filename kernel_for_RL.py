@@ -224,7 +224,8 @@ class kernal(object): # gym.Env
                                   [354.0, 454.0, 93.5, 95.5],
                                   [354.0, 454.0, 334.5, 354.5],
                                   [150.0, 170.0, 348.0, 448.0],
-                                  [638.0, 658.0, 0.0, 100.0]], dtype='float32') # barrier_horizcontal: B2, B8, B1, B9, B4, B6; barrier_vertical: B3, B7
+                                  [638.0, 658.0, 0.0, 100.0],
+                                  [386.3, 421.7, 206.3, 241.7]], dtype='float32') # barrier_horizcontal: B2, B8, B1, B9, B4, B6; barrier_vertical: B3, B7
 
         self.prev_reward = 100
 
@@ -590,7 +591,7 @@ class kernal(object): # gym.Env
         else: self.orders[self.n, 6] = 0
         if pressed[pygame.K_n]: self.orders[self.n, 7] = 1 
         else: self.orders[self.n, 7] = 0
-        #'''
+       # '''
         if pressed[pygame.K_TAB]: self.dev = True
         else: self.dev = False
         return False
