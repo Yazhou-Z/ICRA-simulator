@@ -684,6 +684,9 @@ class kernal(object): # gym.Env
     def line_barriers_check(self, l1, l2):
         for b in self.barriers:
             sq = [b[0], b[2], b[1], b[3]]
+            if b == [386.3, 421.7, 206.3, 241.7]: 
+                p1, p2, p3, p4 = b[0], b[2], b[1], b[3]
+                if self.segment(l1, l2, p1, p2) or self.segment(l1, l2, p3, p4): return True
             if self.line_rect_check(l1, l2, sq): return True
         return False
 
