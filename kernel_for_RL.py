@@ -40,41 +40,70 @@ class record_player(object):
         self.gray = (180, 180, 180)
         self.red = (190, 20, 20)
         self.blue = (10, 125, 181)
-        self.areas = np.array([[[580.0, 680.0, 275.0, 375.0],
-                                [350.0, 450.0, 0.0, 100.0],
-                                [700.0, 800.0, 400.0, 500.0],
-                                [0.0, 100.0, 400.0, 500.0]],
-                               [[120.0, 220.0, 125.0, 225.0],
-                                [350.0, 450.0, 400.0, 500.0],
-                                [0.0, 100.0, 0.0, 100.0],
-                                [700.0, 800.0, 0.0, 100.0]]], dtype='float32')
-        self.barriers = np.array([[350.0, 450.0, 237.5, 262.5],
-                                  [120.0, 220.0, 100.0, 125.0],
-                                  [580.0, 680.0, 375.0, 400.0],
-                                  [140.0, 165.0, 260.0, 360.0],
-                                  [635.0, 660.0, 140.0, 240.0],
-                                  [325.0, 350.0, 400.0, 500.0],
-                                  [450.0, 475.0, 0.0, 100.0]], dtype='float32')
-        # load barriers imgs
+        self.areas = np.array([[[708.0, 808.0, 348.0, 448.0],
+                                [708.0, 808.0, 0.0, 100.0]],
+                                [[0.0, 100.0, 0.0, 100.0],
+                                [0.0, 100.0, 348.0, 448.0]]], dtype='float32')
+        self.special_area = np.array([[23.0, 77.0, 145.0, 193.0],
+                                [731.0, 785.0, 255.0, 303.0], 
+                                [377.0, 431.0, 20.5, 68.5], 
+                                [377.0, 431.0, 379.5, 427.5],
+                                [163.0, 217.0, 259.0, 307.0], 
+                                [591.0, 645.0, 141.0, 189.0]], dtype='float32')
+        self.barriers = np.array([[150.0, 230.0, 214.0, 234.0],
+                                  [578.0, 658.0, 214.0, 234.0],
+                                  [0.0, 100.0, 100.0, 120.0],
+                                  [708.0, 808.0, 328.0, 348.0],
+                                  [354.0, 454.0, 93.5, 113.5],
+                                  [354.0, 454.0, 334.5, 354.5],
+                                  [150.0, 170.0, 348.0, 448.0],
+                                  [638.0, 658.0, 0.0, 100.0],
+                                  [386.3, 421.7, 206.3, 241.7]], dtype='float32') # barrier_horizcontal: B2, B8, B1, B9, B4, B6; barrier_vertical: B3, B7
+        # load barriers imgs #
         self.barriers_img = []
         self.barriers_rect = []
-        for i in range(self.barriers.shape[0]):
-            self.barriers_img.append(pygame.image.load('./imgs/barrier_{}.png'.format('horizontal' if i < 3 else 'vertical')))
+        barrier_horizontal_tall = pygame.image.load('./imgs/barrier_horizontal.png')
+        barrier_horizontal_tall = pygame.transform.scale(barrier_horizontal_tall, (100,20))
+        barrier_horizontal_short = pygame.image.load('./imgs/barrier_horizontal.png')
+        barrier_horizontal_short = pygame.transform.scale(barrier_horizontal_short, (80,20)) 
+        barrier_vertical = pygame.image.load('./imgs/barrier_vertical.png')
+        barrier_vertical = pygame.transform.scale(barrier_vertical, (20,100))
+        barrier_small = pygame.image.load('./imgs/barrier_small.png')
+        barrier_small = pygame.transform.scale(barrier_small, (25,25))
+        barrier_small = pygame.transform.rotate(barrier_small, 45)
+        for i in range(self.barriers.shape[0]+1):
+            if i < 2:
+                self.barriers_img.append(barrier_horizontal_short)
+            elif i < 6:
+                self.barriers_img.append(barrier_horizontal_tall)
+            elif i < 8:
+                self.barriers_img.append(barrier_vertical)
+            else:
+                self.barriers_img.append(barrier_small)
             self.barriers_rect.append(self.barriers_img[-1].get_rect())
-            self.barriers_rect[-1].center = [self.barriers[i][0:2].mean(), self.barriers[i][2:4].mean()]
-        # load areas imgs
+            if i < 8:
+                self.barriers_rect[-1].center = [self.barriers[i][0:2].mean(), self.barriers[i][2:4].mean()]
+            else:
+                self.barriers_rect[-1].center = [404,224]
+        # load start imgs
         self.areas_img = []
         self.areas_rect = []
         for oi, o in enumerate(['red', 'blue']):
-            for ti, t in enumerate(['bonus', 'supply', 'start', 'start']):
-                self.areas_img.append(pygame.image.load('./imgs/area_{}_{}.png'.format(t, o)))
+            for ti, t in enumerate(['start', 'start']):
+                startpicture = pygame.image.load('./imgs/area_{}_{}.png'.format(t, o))                    
+                startpicture = pygame.transform.scale(startpicture, (100,100))
+                self.areas_img.append(startpicture)
                 self.areas_rect.append(self.areas_img[-1].get_rect())
                 self.areas_rect[-1].center = [self.areas[oi, ti][0:2].mean(), self.areas[oi, ti][2:4].mean()]
-        # load supply head imgs
-        self.head_img = [pygame.image.load('./imgs/area_head_{}.png'.format(i)) for i in ['red', 'blue']]
-        self.head_rect = [self.head_img[i].get_rect() for i in range(len(self.head_img))]
-        self.head_rect[0].center = [self.areas[0, 1][0:2].mean(), self.areas[0, 1][2:4].mean()]
-        self.head_rect[1].center = [self.areas[1, 1][0:2].mean(), self.areas[1, 1][2:4].mean()]
+        # load special_area imgs
+        picture = pygame.image.load('./imgs/special_area.png')
+        picture = pygame.transform.scale(picture, (54,48))            
+        self.special_area_img = [picture for i in range(6)]
+        self.special_area_rect = []
+        for i in range(6):
+            self.special_area_rect.append(self.special_area_img[i].get_rect())
+            self.special_area_rect[-1].center = [self.special_area[i][0:2].mean(), self.special_area[i][2:4].mean()] 
+
         self.chassis_img = pygame.image.load('./imgs/chassis_g.png')
         self.gimbal_img = pygame.image.load('./imgs/gimbal_g.png')
         self.bullet_img = pygame.image.load('./imgs/bullet_s.png')
@@ -221,7 +250,7 @@ class kernal(object): # gym.Env
                                   [578.0, 658.0, 214.0, 234.0],
                                   [0.0, 100.0, 100.0, 120.0],
                                   [708.0, 808.0, 328.0, 348.0],
-                                  [354.0, 454.0, 93.5, 95.5],
+                                  [354.0, 454.0, 93.5, 113.5],
                                   [354.0, 454.0, 334.5, 354.5],
                                   [150.0, 170.0, 348.0, 448.0],
                                   [638.0, 658.0, 0.0, 100.0],
@@ -566,8 +595,9 @@ class kernal(object): # gym.Env
         if pressed[pygame.K_2]: self.n = 1
         if pressed[pygame.K_3]: self.n = 2
         if pressed[pygame.K_4]: self.n = 3
-        '''
+        
         self.orders[self.n] = 0
+        '''
         order_name = random.choice([0,1,2,3,4,5,6,7])
         if order_name < 4:
             order  = random.choice([1,-1])
@@ -640,7 +670,7 @@ class kernal(object): # gym.Env
     def get_map(self):
         return g_map(self.map_length, self.map_width, self.areas, self.barriers)
 
-    def stay_check(self):
+    def stay_check(self): # check 防御加成， 要改
         # check bonus stay
         for n in range(self.cars.shape[0]):
             a = self.areas[int(self.cars[n, 0]), 0]
@@ -763,6 +793,12 @@ class kernal(object): # gym.Env
         xs = np.array([[-22.5, -30], [22.5, 30], [-22.5, 30], [22.5, -30]])
         return [np.matmul(xs[i], rotate_matrix) + car[1:3] for i in range(xs.shape[0])]
 
+    def trans_special_barrier(self, points):
+        rotate_matrix = np.array([[np.cos(-np.deg2rad(90+45)), -np.sin(-np.deg2rad(90+45))],
+                                  [np.sin(-np.deg2rad(90+45)), np.cos(-np.deg2rad(+90+45))]])
+        vector = -np.array([404.0, 224.0])
+        return np.matmul(points + vector, rotate_matrix)
+
     def check_interface(self, n):
         # car barriers assess
         wheels = self.check_points_wheel(self.cars[n])
@@ -770,7 +806,7 @@ class kernal(object): # gym.Env
             if w[0] <= 0 or w[0] >= self.map_length or w[1] <= 0 or w[1] >= self.map_width:
                 self.cars[n, 12] += 1
                 return True
-            for b in self.barriers:
+            for b in self.barriers[:8]:
                 if w[0] >= b[0] and w[0] <= b[1] and w[1] >= b[2] and w[1] <= b[3]:
                     self.cars[n, 12] += 1
                     return True
@@ -780,15 +816,27 @@ class kernal(object): # gym.Env
                 self.cars[n, 13] += 1
                 self.cars[n, 6] -= 10
                 return True
-            for b in self.barriers:
+            for b in self.barriers[:8]:
                 if a[0] >= b[0] and a[0] <= b[1] and a[1] >= b[2] and a[1] <= b[3]:
                     self.cars[n, 13] += 1
                     self.cars[n, 6] -= 10
                     return True
+        # special_barrier car asses
+        wheels_barrier = self.trans_special_barrier(wheels)
+        for w in wheels_barrier:
+            if w[0] >= -12.5 and w[0] <= 12.5 and w[1] >= -12.5 and w[1] <= 12.5:
+                self.cars[n, 14] += 1
+                return True
+        armors_barrier = self.trans_special_barrier(armors)
+        for a in armors_barrier:
+            if a[0] >= -12.5 and a[0] <= 12.5 and a[1] >= -12.5 and a[1] <= 12.5:
+                self.cars[n, 14] += 1
+                self.cars[n, 6] -= 10
+                return True
         # car car assess
         for i in range(self.car_num):
             if i == n: continue
-            wheels_tran = self.transfer_to_car_coordinate(wheels, i)
+            wheels_tran = self.transfer_to_car_coordinate(wheels, i) # 以car_i为参考系
             for w in wheels_tran:
                 if w[0] >= -22.5 and w[0] <= 22.5 and w[1] >= -30 and w[1] <= 30:
                     self.cars[n, 14] += 1
