@@ -188,37 +188,37 @@ extern "C"{
 // 会编译成函数名 print_msg_char，这会导致python调用这个函数的时候
 // 找不到对应的函数名，这有加了 extern "C"，才会以C语言的方式进行
 // 编译，这样不会改变函数名字
-SPFA* obj;
-SPFA* create_SPFA(int x,int y){
+SPFA* obj[4];
+SPFA* create_SPFA(int n,int x,int y){
     //cout<<x<<' '<<y<<endl;
-    obj=new SPFA(x,y);
-    return obj;
+    obj[n]=new SPFA(x,y);
+    return obj[n];
 }
-SPFA* recreate_SPFA(int x,int y){
+SPFA* recreate_SPFA(int n,int x,int y){
     //cout<<x<<' '<<y<<endl;
-    delete obj;
-    obj=new SPFA(x,y);
-    return obj;
+    delete obj[n];
+    obj[n]=new SPFA(x,y);
+    return obj[n];
 }
-void open_debug_modle(){
-    obj->open_debug_modle();
+void open_debug_modle(int n){
+    obj[n]->open_debug_modle();
 }
-void set_begin_end(int x,int y,int xx,int yy){
-    obj->set_begin_end(x,y,xx,yy);
+void set_begin_end(int n,int x,int y,int xx,int yy){
+    obj[n]->set_begin_end(x,y,xx,yy);
 }
-void add_obstables(int x,int xx,int y,int yy){
-    obj->add_obstables(x,xx,y,yy);
+void add_obstables(int n,int x,int xx,int y,int yy){
+    obj[n]->add_obstables(x,xx,y,yy);
 }
-int calc_SPFA(){
-    return obj->calc_SPFA();
+int calc_SPFA(int n){
+    return obj[n]->calc_SPFA();
 }
-int smooth(int *a){
-    return obj->smooth(a);
+int smooth(int n,int *a){
+    return obj[n]->smooth(a);
 }
-float value(int x,int y){
+float value(int n,int x,int y){
    // cout<<x<<' '<<y<<endl;
    // cout<<obj->value_calc(x,y)<<endl;
-    return obj->value_calc(x,y);
+    return obj[n]->value_calc(x,y);
 }
 }
 #endif //ICRA_SHORTEST_PATH_SPFA_H
