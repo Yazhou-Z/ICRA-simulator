@@ -219,8 +219,6 @@ class kernal(object):  # gym.Env
         self.render = render
         # below are params that can be challenged depended on situation
         self.bullet_speed = 12.5
-        self.motion = 6
-        self.rotate_motion = 4
         self.yaw_motion = 1
         self.camera_angle = 75 / 2
         self.lidar_angle = 120 / 2
@@ -247,6 +245,9 @@ class kernal(object):  # gym.Env
                                   [450.0, 475.0, 0.0, 100.0]], dtype='float32')
 
         self.prev_reward = None
+        
+        self.motion = 50
+        self.rotate_motion = 4
 
         if render:
             pygame.init()
@@ -301,7 +302,7 @@ class kernal(object):  # gym.Env
             self.sp_angle_lowerbound = -1
             self.sp_angle_upperbound = 1
             self.sp_v_lowerbound = 0.1
-            self.sp_v_upperbound = 0.2
+            self.sp_v_upperbound = 1
             self.sp_Penalty_value = np.zeros(1000, dtype='float16')
             self.sp_circular_obstacles = []
             self.sp_delta_dir=20
@@ -313,7 +314,7 @@ class kernal(object):  # gym.Env
             self.sp.create_SPFA(800,500)
             self.obj=1
         else:self.sp.recreate_SPFA(800,500)
-        self.sp.open_debug_modle()
+        #self.sp.open_debug_modle()
         map_width, map_length = 800, 500
         def add_circular_obstacles(x,y,xx,yy):
             self.sp_circular_obstacles+=[[(x+xx)/2,(y+yy)/2,math.sqrt((xx-x)*(xx-x)+(yy-y)*(yy-y))/2]]
@@ -336,7 +337,6 @@ class kernal(object):  # gym.Env
             sp_circular_obstacles(self.barriers[i])
         for i in range(self.cars.shape[0]):
             if (i!=car_th):
-#                print(self.cars[i])
                 f=np.array([self.cars[i][1]-30,self.cars[i][1]+30,self.cars[i][2]-30,self.cars[i][2]+30],dtype=int)
                 print(f)
                 self.sp.add_obstables(int(f[0]),int(f[1]),int(f[2]),int(f[3]))
@@ -365,7 +365,7 @@ class kernal(object):  # gym.Env
             self.sp_follow_the_road(p_begin,self.sp_re_target())
         self.sp_max_route_th=self.sp_route.shape[0]-1
         self.sp_target_global=[self.sp_route[self.sp_max_route_th][0],self.sp_route[self.sp_max_route_th][1]]
-        print(self.sp_route)
+        #print(self.sp_route)
 
     def sp_calc_Penalty_value(self,car_th=0):
         def norm(x, y):
@@ -397,7 +397,9 @@ class kernal(object):  # gym.Env
         #max_speed=min(3,max(p_target_local[2],1/Penalty_value))#计算最大速度
         #print("max_speed",max_speed)
         car_x,car_y=self.cars[car_th][1],self.cars[car_th][2]
-        max_speed=max(3,norm(car_x-self.sp_route[self.sp_route_th][0],car_y-self.sp_route[self.sp_route_th][1])/100)
+        #max_speed=max(0.1,norm(car_x-self.sp_route[self.sp_route_th][0],car_y-self.sp_route[self.sp_route_th][1])/80)
+        max_speed=3
+        max_speed=min(3,min(max_speed,p_target_local[2]))
         PI=math.acos(-1)
         #print(self.cars[car_th])
         car_theta=self.cars[car_th][3]*PI/180
@@ -411,26 +413,28 @@ class kernal(object):  # gym.Env
         new_vy=new_dy/norm(new_dx,new_dy)*max_speed
         dvx,dvy=(new_vx-vx),(new_vy-vy)
         print("vx,vy:",vx,vy)
+        print("dvx,dvy:",dvx,dvy)
         print("newvx,newvy:",new_vx,new_vy)
         #获得在当前小车参考系下的新速度
         self.orders[car_th][0]=0
         self.orders[car_th][1]=0
         self.orders[car_th][2]=0
+        dvx/=1.5
 
-        if (vx<0 and dvx<=self.sp_v_lowerbound):self.orders[car_th][0]=-1
-        if (vx>=0 and dvx<=self.sp_v_upperbound):self.orders[car_th][0]=-1
+        if (new_vx<0 and -dvx>=self.sp_v_lowerbound):self.orders[car_th][0]=-1
+        if (new_vx>=0 and -dvx>self.sp_v_upperbound):self.orders[car_th][0]=-1
 
-        if (vx>0 and dvx>self.sp_v_lowerbound):self.orders[car_th][0]=1
-        if (vx<=0 and dvx>self.sp_v_upperbound):self.orders[car_th][0]=1
+        if (new_vx>0 and dvx>=self.sp_v_lowerbound):self.orders[car_th][0]=1
+        if (new_vx<=0 and dvx>self.sp_v_upperbound):self.orders[car_th][0]=1
 
-        if (vy<0 and dvy<=self.sp_v_lowerbound):self.orders[car_th][1]=-1
-        if (vy>=0 and dvy<=self.sp_v_upperbound):self.orders[car_th][1]=-1
+        if (new_vy<0 and -dvy>=self.sp_v_lowerbound):self.orders[car_th][1]=-1
+        if (new_vy>=0 and -dvy>self.sp_v_upperbound):self.orders[car_th][1]=-1
 
-        if (vy>0 and dvy>self.sp_v_lowerbound):self.orders[car_th][1]=1
-        if (vy<=0 and dvy>self.sp_v_upperbound):self.orders[car_th][1]=1
+        if (new_vy>0 and dvy>=self.sp_v_lowerbound):self.orders[car_th][1]=1
+        if (new_vy<=0 and dvy>self.sp_v_upperbound):self.orders[car_th][1]=1
 
         #如果超过了某个阈值，就启动加速/减速
-
+        print(self.orders[car_th])
         delta_theta=math.asin((vx*new_vy-vy*new_vx)/norm(vx,vy)/norm(new_vx,new_vy))
         cos_d_theta, sin_d_theta=math.cos(delta_theta),math.sin(delta_theta)
         #计算改变的角度
@@ -514,9 +518,13 @@ class kernal(object):  # gym.Env
 
         # if still got the goal, then goto the next goal
         # print(self.sp_route)
-        while (self.sp_route_th <= self.sp_max_route_th and clc(self.sp_route[self.sp_route_th][0],
-                                                                self.sp_route[self.sp_route_th][1],
-                                                                self.cars[car_th][1], self.cars[car_th][2]) < 400):
+
+        while (self.sp_route_th < self.sp_max_route_th and
+               clc(self.sp_route[self.sp_route_th][0],self.sp_route[self.sp_route_th][1],
+                self.cars[car_th][1], self.cars[car_th][2]) < 1600 or
+               self.sp_route_th == self.sp_max_route_th and
+               clc(self.sp_route[self.sp_route_th][0], self.sp_route[self.sp_route_th][1],
+                   self.cars[car_th][1], self.cars[car_th][2]) < 400):
             self.sp_route_th += 1
         if (self.sp_route_th > self.sp_max_route_th):
             self.sp_target_global = [random.randint(1, 800), random.randint(1, 500)]
@@ -558,7 +566,7 @@ class kernal(object):  # gym.Env
         # human play mode, only when render == True
         assert self.render, 'human play mode, only when render == True'
         while True:
-            if not self.epoch % 1:
+            if not self.epoch % 3:
                 if self.get_order():  # if event.type == pygame.QUIT
                     return state(self.time, self.cars, self.compet_info, self.time <= 0, self.detect, self.vision)
             self.one_epoch()
@@ -588,6 +596,7 @@ class kernal(object):  # gym.Env
                 self.orders_to_acts(n)
             # move car one by one
             self.move_car(n)
+
             if not self.epoch % 20:
                 if self.cars[n, 5] >= 720:  # 5:枪口热量 6:血量
                     self.cars[n, 6] -= (self.cars[n, 5] - 720) * 40
@@ -623,15 +632,15 @@ class kernal(object):  # gym.Env
                    bullets))
         if self.render: self.update_display()
 
-    def move_car(self, n):
+    def move_car(self, n):#速度->位置信息
         if not self.cars[n, 7]:
             # move chassis
             if self.acts[n, 0]:
                 p = self.cars[n, 3]
                 self.cars[n, 3] += self.acts[n, 0]
-                if self.cars[n, 3] > 180: self.cars[n, 3] -= 360
+                if self.cars[n, 3] > 180: self.cars[n, 3] -= 360#保持范围在-180..180
                 if self.cars[n, 3] < -180: self.cars[n, 3] += 360
-                if self.check_interface(n):
+                if self.check_interface(n):#碰撞检测（好简陋，这就是不完全符合物理么）
                     self.acts[n, 0] = -self.acts[n, 0] * self.move_discount
                     self.cars[n, 3] = p
             # move gimbal
@@ -640,7 +649,7 @@ class kernal(object):  # gym.Env
                 if self.cars[n, 4] > 90: self.cars[n, 4] = 90
                 if self.cars[n, 4] < -90: self.cars[n, 4] = -90
             # print(self.acts[n, 7])
-            if self.acts[n, 7]:
+            if self.acts[n, 7]:#自动瞄准
                 if self.car_num > 1:
                     select = np.where((self.vision[n] == 1))[0]
                     if select.size:
@@ -699,7 +708,7 @@ class kernal(object):  # gym.Env
         else:
             self.cars[n, 7] -= 1
             if self.cars[n, 7] == 0:
-                self.cars[n, 8] == 0
+                self.cars[n, 8] = 0
         # check supply
         if self.acts[n, 6]:
             dis = np.abs(self.cars[n, 1:3] - [self.areas[int(self.cars[n, 0]), 1][0:2].mean(), \
@@ -809,19 +818,19 @@ class kernal(object):  # gym.Env
 
     def orders_to_acts(self, n):
         # turn orders to acts
-        self.acts[n, 2] += self.orders[n, 0] * 1.5 / self.motion
+        self.acts[n, 2] += self.orders[n, 0] * 1.5 / self.motion# self.motion=6
+        if self.orders[n, 0] == 0 and abs(self.acts[n, 2]) < 1.48 / self.motion: self.acts[n, 2] = 0
         if self.orders[n, 0] == 0:
             if self.acts[n, 2] > 0: self.acts[n, 2] -= 1.5 / self.motion
             if self.acts[n, 2] < 0: self.acts[n, 2] += 1.5 / self.motion
-        if abs(self.acts[n, 2]) < 1.5 / self.motion: self.acts[n, 2] = 0
         if self.acts[n, 2] >= 1.5: self.acts[n, 2] = 1.5
         if self.acts[n, 2] <= -1.5: self.acts[n, 2] = -1.5
         # x, y
         self.acts[n, 3] += self.orders[n, 1] * 1 / self.motion
+        if self.orders[n, 1] == 0 and abs(self.acts[n, 3]) < 0.98 / self.motion: self.acts[n, 3] = 0
         if self.orders[n, 1] == 0:
             if self.acts[n, 3] > 0: self.acts[n, 3] -= 1 / self.motion
             if self.acts[n, 3] < 0: self.acts[n, 3] += 1 / self.motion
-        if abs(self.acts[n, 3]) < 1 / self.motion: self.acts[n, 3] = 0
         if self.acts[n, 3] >= 1: self.acts[n, 3] = 1
         if self.acts[n, 3] <= -1: self.acts[n, 3] = -1
         # rotate chassis

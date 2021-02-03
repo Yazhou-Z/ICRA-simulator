@@ -299,8 +299,8 @@ class kernal(object):  # gym.Env
             self.sp_target_global = None
             self.sp_angle_lowerbound = 0
             self.sp_angle_upperbound = 0
-            self.sp_v_lowerbound = -0.05
-            self.sp_v_upperbound = 0.1
+            self.sp_v_lowerbound = -0.1
+            self.sp_v_upperbound = 0.2
             self.sp_Penalty_value = np.zeros(1000, dtype='float16')
             self.sp_circular_obstacles = []
             self.sp_delta_dir=20
@@ -506,11 +506,14 @@ class kernal(object):  # gym.Env
         new_vy=new_dy/norm(new_dx,new_dy)*max_speed
         dvx,dvy=(new_vx-vx),(new_vy-vy)
         #获得在当前小车参考系下的新速度
-
+        self.orders[car_th][0] = 0
+        self.orders[car_th][1] = 0
         if (dvx<self.sp_v_lowerbound):self.orders[car_th][0]=-1
         if (dvx>self.sp_v_upperbound):self.orders[car_th][0]=1
         if (dvy<self.sp_v_lowerbound):self.orders[car_th][1]=-1
         if (dvy>self.sp_v_upperbound):self.orders[car_th][1]=1
+        if (abs(dvx)>abs(dvy))self.orders[car_th][1]=0
+        else:self.orders[car_th][0]=0
         #如果超过了某个阈值，就启动加速/减速
 
         delta_theta=math.asin((vx*new_vy-vy*new_vx)/norm(vx,vy)/norm(new_vx,new_vy))

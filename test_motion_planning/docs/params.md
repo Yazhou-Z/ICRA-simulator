@@ -5,7 +5,7 @@
 注意：`kernal`和`rmaics`的参数命名方式不完全相同
 
 |rmaics|kernal|含义|
-|-|-|-|
+|---|---|---|
 |[state](#state)||总状态|
 |[agents](#agents)|[cars](#agents)|车的状态|
 |[compet](#compet)|[compet_info](#compet)|比赛信息|
@@ -115,7 +115,7 @@ detect = [[0, 1, 0, 0], # 0
 `actions`为传给机器人的指令，在`kernal`中称作`orders`，二维数组，类型为`int`，所有参数理论类型也为`int`，`shape`为（car_num，8），单个指令格式如下
 
 |引索|名称|范围|解释|手控按键|
-|-|-|-|-|-|
+|---|---|---|---|---|
 |0|x|-1~1|-1：后退，0：不动，1：前进[3]|s/w|
 |1|y|-1~1|-1：左移，0：不动，1：右移|q/e|
 |2|rotate|-1~1|底盘，-1：左转，0：不动，1：右转|a/d|
@@ -167,7 +167,7 @@ class g_map(object):
 `areas`为三维数组，`shape`为（2，4，4）
 
 |引索0|引索1|名称|类型|队伍|
-|-|-|-|-|-|
+|---|---|---|---|---|
 |0|0|bonus|防御加成区|红方|
 |0|1|supply|补给区|红方|
 |0|2|start0|起始区|红方|
@@ -196,7 +196,7 @@ class g_map(object):
 这个`acts`是`kernal`里的动作，与`rmaics`里的[`actions`](#actions)不同，本`acts`是一个较底层的action，类型`float`，`shape`为：（car_num，8）
 
 |引索1|名称|解释|
-|-|-|-|
+|---|---|---|
 |0|rotate_speed|底盘旋转速度|
 |1|yaw_speed|云台旋转速度|
 |2|x_speed|前进后退速度|

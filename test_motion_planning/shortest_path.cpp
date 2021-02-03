@@ -21,7 +21,7 @@ private:
     int debug_modle=0;
     pair<int,int>seq[N*M*5],last[N][M],c[4],dd,z[N*M];
     void dfs(int x,int y){
-      cout<<x<<' '<<y<<' '<<ff[x][y]<<' '<<f[x][y]<<endl;
+      //cout<<x<<' '<<y<<' '<<ff[x][y]<<' '<<f[x][y]<<endl;
         if (last[x][y].first!=0)
             dfs(last[x][y].first,last[x][y].second);
         z[++d]=make_pair(x,y);
@@ -51,11 +51,11 @@ private:
         }
         for (int i = 1; i <= n; i++)
             for (int j = 1; j <= m; j++)value[i][j] = max(1.0,200-value[i][j]*2);
-        for (int i=0;i<4;i++)cout<<c[i].first<<' '<<c[i].second<<endl;
+        //for (int i=0;i<4;i++)cout<<c[i].first<<' '<<c[i].second<<endl;
     }
 public:
     SPFA(int x,int y){
-        cout<<x<<' '<<y<<endl;
+        //cout<<x<<' '<<y<<endl;
         memset(s,0,sizeof(s));
         memset(value,0,sizeof(value));
         memset(ff,0,sizeof(ff));
@@ -73,7 +73,7 @@ public:
     }
     void set_begin_end(int X,int Y,int XX,int YY){
         x=X;y=Y;xx=XX;yy=YY;
-        cout<<"begin&end:"<<x<<' '<<y<<' '<<xx<<' '<<yy<<endl;
+        //cout<<"begin&end:"<<x<<' '<<y<<' '<<xx<<' '<<yy<<endl;
     }
     void add_obstables(int X,int XX,int Y,int YY){
         if (X>XX)swap(X,XX);if (Y>YY)swap(Y,YY);
