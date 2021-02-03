@@ -527,7 +527,7 @@ class kernal(object):  # gym.Env
                    self.cars[car_th][1], self.cars[car_th][2]) < 400):
             self.sp_route_th += 1
         if (self.sp_route_th > self.sp_max_route_th):
-            self.sp_target_global = [random.randint(1, 800), random.randint(1, 500)]
+            self.sp_target_global = [1, 1]
             p_target_global = self.sp_target_global
             print("we will get:", p_target_global[0], p_target_global[1])
             self.sp_tag = 1
