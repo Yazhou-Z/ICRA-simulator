@@ -30,7 +30,7 @@ private:
         int l = 0, r = 0;
         for (int i = 0; i <= n + 1; i++)
             for (int j = 0; j <= m + 1; j++) {
-                value[i][j] = flag[i][j] = 0;
+                value[i][j] =1; flag[i][j] = 0;
                 if (s[i][j] != '0') {
                     flag[i][j] = 1;
                     seq[++r] = make_pair(i, j);
@@ -50,7 +50,7 @@ private:
             }
         }
         for (int i = 1; i <= n; i++)
-            for (int j = 1; j <= m; j++)value[i][j] = max(1.0,200-value[i][j]*2);
+            for (int j = 1; j <= m; j++)value[i][j] = max(1.0,5000/value[i][j]);
         //for (int i=0;i<4;i++)cout<<c[i].first<<' '<<c[i].second<<endl;
     }
 public:
@@ -83,6 +83,16 @@ public:
         for (int i=X;i<=XX;i++)
             for (int j=Y;j<=YY;j++)s[i][j]='1';
     }
+    /*
+    void add_quadrilateral_obstables(double x*,double y*){
+        double xmax=1,xmin=n,ymax=1,ymin=m;
+        for (int i=0;i<4;i++){
+            xmax=max(xmax,x[i]);ymax=max(ymax,y[i]);
+            xmin=min(xmin,x[i]);ymin=min(ymin,y[i]);
+        }
+        for (int i=int(xmin);i<=int(xmax+1-eps);i++)
+            for (int j=int(ymin);j<=int(ymax+1-eps);j++)
+    }*/
     int calc_SPFA(){
         init();
         int l=0,r=1;seq[r]=make_pair(x,y);
@@ -125,14 +135,17 @@ public:
                 }
             }return 1;
         }else{//=50
-            for (int i=max(1,xx-50);i<=min(n,xx+50);i++)
-                for (int j=max(1,yy-50);j<=min(m,yy+50);j++)
+            //xx=0;yy=0;
+            for (int i=max(50,xx-50);i<=min(n-50,xx+50);i++)
+                for (int j=max(50,yy-50);j<=min(m-50,yy+50);j++)
                     if (ff[i][j]){
                         xx=i;yy=j;
                         d=0;dfs(xx,yy);
                         return 1;
                     }
-            puts("no_such_path");
+            //puts("no_such_path");
+            //puts("no_such_path 233");
+            //cout<<"no_such_path"<<endl;
             return 0;
             /*
             //freopen("/home/cogito/CLionProjects/ICRA_shortest_path/wrong_info.txt","w",stdout);
@@ -190,29 +203,36 @@ extern "C"{
 // 编译，这样不会改变函数名字
 SPFA* obj[4];
 SPFA* create_SPFA(int n,int x,int y){
-    //cout<<x<<' '<<y<<endl;
+    cout<<"create_SPFA"<<' '<<n<<' '<<x<<' '<<y<<endl;
+    printf("create_SPFA:%d",n);
     obj[n]=new SPFA(x,y);
     return obj[n];
 }
 SPFA* recreate_SPFA(int n,int x,int y){
     //cout<<x<<' '<<y<<endl;
+    printf("recreate_SPFA:%d",n);
     delete obj[n];
     obj[n]=new SPFA(x,y);
     return obj[n];
 }
 void open_debug_modle(int n){
+    printf("open_debug_modle:%d",n);
     obj[n]->open_debug_modle();
 }
 void set_begin_end(int n,int x,int y,int xx,int yy){
+    cout<<"set_begin_end"<<' '<<n<<' '<<x<<' '<<y<<' '<<xx<<' '<<yy<<endl;
     obj[n]->set_begin_end(x,y,xx,yy);
 }
 void add_obstables(int n,int x,int xx,int y,int yy){
+    cout<<"add_obstables"<<' '<<n<<' '<<x<<' '<<y<<' '<<xx<<' '<<yy<<endl;
     obj[n]->add_obstables(x,xx,y,yy);
 }
 int calc_SPFA(int n){
+    cout<<"calc_SPFA"<<' '<<n<<endl;
     return obj[n]->calc_SPFA();
 }
 int smooth(int n,int *a){
+    cout<<"smooth"<<' '<<n<<endl;
     return obj[n]->smooth(a);
 }
 float value(int n,int x,int y){

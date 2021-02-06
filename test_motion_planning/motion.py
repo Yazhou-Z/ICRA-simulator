@@ -7,6 +7,7 @@ import pygame
 import random
 import math
 import ctypes
+import cv2 as cv
 # import gym
 
 class bullet(object):
@@ -294,34 +295,45 @@ class kernal(object):  # gym.Env
             #self.sp_value = np.zeros([map_width, map_length], dtype='float16')
             #self.sp_flag = np.zeros([map_width, map_length], dtype='uint32')
             #self.sp_ff = np.zeros([map_width, map_length], dtype='uint32')
-            self.sp_route = np.zeros([1000, 2], dtype='uint32')
             #self.sp_last = np.zeros([map_width, map_length], dtype='uint32')
-            self.sp_tag = 0
-            self.sp_route_th = 0
-            self.sp_target_global = None
+
+            #Hyperparameters and Pretreatment
             self.sp_angle_lowerbound = -1
             self.sp_angle_upperbound = 1
             self.sp_v_lowerbound = 0.1
             self.sp_v_upperbound = 1
-            self.sp_Penalty_value = np.zeros(1000, dtype='float16')
             self.sp_circular_obstacles = []
             self.sp_delta_dir=20
             self.sp = ctypes.cdll.LoadLibrary("/home/cogito/ICRA-simulator/test_motion_planning/sp.so")
-            self.obj = 0
-            self.sp_max_route_th = 0
 
+            #status for each cars
+            self.sp_obj=[0,0,0,0]
+            self.sp_route = [[],[],[],[]]
+            self.sp_tag = [0,0,0,0]
+            self.sp_route_th = [0,0,0,0]
+            self.sp_target_global = [[0,0],[0,0],[0,0],[0,0]]
+            self.sp_max_route_th = [0,0,0,0]
+
+            #useless
+            self.sp_Penalty_value = np.zeros(1000, dtype='float16')
+
+            #for debug
             self.sp_tar=[[[50,50],[750,450],[750,50],[50,450]],[[50,450],[750,50],[50,50],[750,450]]]
             self.sp_now=[0,0]
     def sp_init(self,car_th):
-        if (self.obj==0):
-            self.obj1 =self.sp.create_SPFA(car_th,800,500)
-            self.obj=1
-        else:self.obj1 =self.sp.recreate_SPFA(car_th,800,500)
+        flag=1
+        if (self.sp_circular_obstacles != []):flag=0
+        if (self.sp_obj[car_th]==0):
+            self.sp.create_SPFA(car_th,800,500)
+            #print("sp_create_SPFA",car_th)
+            self.sp_obj[car_th]=1
+        else:self.sp.recreate_SPFA(car_th,800,500)
         #self.sp.open_debug_modle()
         map_width, map_length = 800, 500
         def add_circular_obstacles(x,y,xx,yy):
             self.sp_circular_obstacles+=[[(x+xx)/2,(y+yy)/2,math.sqrt((xx-x)*(xx-x)+(yy-y)*(yy-y))/2]]
         def sp_circular_obstacles(f):
+            if (flag==0):return
             x,xx,y,yy=f[0],f[1],f[2],f[3]
             if (x>xx):x,xx=xx,x
             if (y>yy):y,yy=yy,y
@@ -335,26 +347,27 @@ class kernal(object):  # gym.Env
 
         for i in range(self.barriers.shape[0]):
             f=self.barriers[i]
-            print(f)
+            #print(f)
             self.sp.add_obstables(car_th,int(f[0]),int(f[1]),int(f[2]),int(f[3]))
             sp_circular_obstacles(self.barriers[i])
         for i in range(self.cars.shape[0]):
             if (i!=car_th):
+                print("i",i)
                 f=np.array([self.cars[i][1]-30,self.cars[i][1]+30,self.cars[i][2]-30,self.cars[i][2]+30],dtype=int)
-                print(f)
+                #print(f)
                 self.sp.add_obstables(car_th,int(f[0]),int(f[1]),int(f[2]),int(f[3]))
 
-    def sp_re_target(self):
+    '''def sp_re_target(self):
         self.sp_target_global = [random.randint(1, 800), random.randint(1, 500)]
         p_target_global = self.sp_target_global
         print("we will get:", p_target_global[0], p_target_global[1])
         self.sp_tag = 0
-        return p_target_global
+        return p_target_global'''
     def sp_follow_the_road(self,car_th,p_begin,p_end):
         #print(p_begin)
         #print(p_end)
         map_width, map_length = 800, 500
-        self.sp.set_begin_end(car_th,int(p_begin[0]),int(p_begin[1]),int(p_end[0]),int(p_end[1]))
+        self.sp.set_begin_end(car_th,int(p_begin[1]),int(p_begin[0]),int(p_end[0]),int(p_end[1]))
         flag=self.sp.calc_SPFA(car_th)
         if (flag==1):
             arr = (ctypes.c_int * 2000)()
@@ -362,14 +375,18 @@ class kernal(object):  # gym.Env
             zz=[]
             for i in range(x):
                 zz+=[[arr[i*2+1],arr[i*2+2]]]
-            self.sp_route = np.reshape(np.array(zz),(-1,2))
+            self.sp_route[car_th] = np.reshape(np.array(zz),(-1,2))
+            self.sp_max_route_th[car_th]=self.sp_route[car_th].shape[0]-1
+
+            #448, 808
+            self.show_route()###
+
+
+            return 1
             #print(zz)
         else:
             return 0
             #self.sp_follow_the_road(car_th,p_begin,self.sp_re_target())
-        self.sp_max_route_th=self.sp_route.shape[0]-1
-        self.sp_target_global=[self.sp_route[self.sp_max_route_th][0],self.sp_route[self.sp_max_route_th][1]]
-        return 1
         #print(self.sp_route)
 
     def sp_calc_Penalty_value(self,car_th=0):
@@ -380,11 +397,11 @@ class kernal(object):  # gym.Env
             xx,yy=c[0]-a[0],c[1]-a[1]
             return math.acos((x*xx+y*yy)/norm(x,y)/norm(xx,yy))
 
-        n=self.sp_route.shape[0]
+        n=self.sp_route[car_th].shape[0]
         if (self.sp_tag==1):
             for i in range(n-1,1,-1):
                 angle=calc_angle(sp_route[i],sp_route[i+1],sp_route(i-1))
-                self.sp_Penalty_value[i]=angle/float(self.sp.value(self.obj1,self.sp_route[i][0],self.sp_route[i][1]))*1000
+                self.sp_Penalty_value[i]=angle/float(self.sp.value(car_th,self.sp_route[i][0],self.sp_route[i][1]))*1000
                 if (i!=n-1):
                     k=self.sp_Penalty_value[i+1]-norm(sp_route[i][0]-sp_route[i+1][0],sp_route[i][1]-sp_route[i+1][1])
                     self.sp_Penalty_value[i]=min(self.sp_Penalty_value[i],k)
@@ -393,9 +410,9 @@ class kernal(object):  # gym.Env
     def sp_speed_changing(self,car_th=0,p_target_local=None):
         def norm(x,y):
             return math.sqrt(x*x+y*y)
-        print("Now at:",self.cars[car_th][1],self.cars[car_th][2])
-        print("wanna to go:",self.sp_route[self.sp_route_th])
-        print("target_local:",p_target_local[0],p_target_local[1])
+        #print("Now at:",self.cars[car_th][1],self.cars[car_th][2])
+        #print("wanna to go:",self.sp_route[car_th][self.sp_route_th[car_th]])
+        #print("target_local:",p_target_local[0],p_target_local[1])
         #sleep(500)
         #Penalty_value=self.sp_calc_Penalty_value(car_th)
         #惩罚值越高代表全局地图在当前节点越难走，和最近的那个拐弯的角度和拐弯点的costmap有关
@@ -417,9 +434,9 @@ class kernal(object):  # gym.Env
         new_vx=new_dx/norm(new_dx,new_dy)*max_speed
         new_vy=new_dy/norm(new_dx,new_dy)*max_speed
         dvx,dvy=(new_vx-vx),(new_vy-vy)
-        print("vx,vy:",vx,vy)
-        print("dvx,dvy:",dvx,dvy)
-        print("newvx,newvy:",new_vx,new_vy)
+        #print("vx,vy:",vx,vy)
+        #print("dvx,dvy:",dvx,dvy)
+        #print("newvx,newvy:",new_vx,new_vy)
         #获得在当前小车参考系下的新速度
         self.orders[car_th][0]=0
         self.orders[car_th][1]=0
@@ -439,7 +456,7 @@ class kernal(object):  # gym.Env
         if (new_vy<=0 and dvy>self.sp_v_upperbound):self.orders[car_th][1]=1
 
         #如果超过了某个阈值，就启动加速/减速
-        print(self.orders[car_th])
+        #print(self.orders[car_th])
         delta_theta=math.asin((vx*new_vy-vy*new_vx)/norm(vx,vy)/norm(new_vx,new_vy))
         cos_d_theta, sin_d_theta=math.cos(delta_theta),math.sin(delta_theta)
         #计算改变的角度
@@ -468,7 +485,7 @@ class kernal(object):  # gym.Env
         from vis import visualize_traj_dynamic
         #将障碍物和小车都转换成圆形的物体输入
         ws_model = dict()
-        ws_model['robot_radius'] = 0.3
+        ws_model['robot_radius'] =1
         ws_model['circular_obstacles'] =self.sp_circular_obstacles
         ws_model['boundary'] = [400,250,400,250]
         X=[]
@@ -485,67 +502,70 @@ class kernal(object):  # gym.Env
             if (i!=car_th):V_des[i]=V[i]
         V = RVO_update(X, V_des, V, ws_model,local=2)
 
-        print("RVO_target_global",p_target_local)
-        print("RVO_V",V[car_th])
+        #print("RVO_target_global",p_target_local)
+        #print("RVO_V",V[car_th])
         p_target_local=V[car_th][:]
         p_target_local[0]+=self.cars[car_th][1]
         p_target_local[1]+=self.cars[car_th][2]
         p_target_local+=[norm(V[car_th][0],V[car_th][1])]
-        print("target_RVO",p_target_local)
+        #print("target_RVO",p_target_local)
         return p_target_local
 
 
-    def sp_follower(self,car_th=0,p_target=None):#20fps
-        #print("sp_follower")
+    def sp_follower(self,car_th=0,p_target=None):#return 1: success, 2: had got it, 0:fail to find a routh
         def clc(x, y, xx, yy):  # 算范数的平方
             return (x - xx) * (x - xx) + (y - yy) * (y - yy)
-        # 如果没有输入就随机一个初始节点
-        p_target_global=p_target
-        if (p_target_global == None):
-            p_target_global = self.sp_target_global
-        else:
-            self.sp_target_global = p_target_global
-            self.sp_tag = 0
-        #print(self.sp_target_global)
-        #print(self.sp_target_global[0], self.sp_target_global[1], self.cars[car_th][1],self.cars[car_th][2])
-        if (p_target_global == None or clc(self.sp_target_global[0], self.sp_target_global[1], self.cars[car_th][1],self.cars[car_th][2]) < 100):
-            # self.sp_target_global =  [random.randint(1,500) , random.randint(1,800)]
-            self.sp_target_global = [750, 450]
-            p_target_global = self.sp_target_global
-            print("we will get:", p_target_global[0], p_target_global[1])
-            self.sp_tag = 1
-            self.sp_init(car_th)
-            self.sp_follow_the_road(car_th,(self.cars[car_th][2], self.cars[car_th][1]), p_target_global)
-        if (self.sp_tag % 2000000 == 0):  # 每隔20帧（也就是1秒）重新算一次最短路，保证最短路地图的有效性
-            # recalculate the shortest path
-            # 1 time/s
-            self.sp_init(car_th)
-            self.sp_follow_the_road(car_th,(self.cars[car_th][2], self.cars[car_th][1]), p_target_global)
 
-        # if still got the goal, then goto the next goal
-        # print(self.sp_route)
-
-        while (self.sp_route_th < self.sp_max_route_th and
-               clc(self.sp_route[self.sp_route_th][0],self.sp_route[self.sp_route_th][1],
-                self.cars[car_th][1], self.cars[car_th][2]) < 1600 or
-               self.sp_route_th == self.sp_max_route_th and
-               clc(self.sp_route[self.sp_route_th][0], self.sp_route[self.sp_route_th][1],
-                   self.cars[car_th][1], self.cars[car_th][2]) < 100):
-            self.sp_route_th += 1
-        if (self.sp_route_th > self.sp_max_route_th):
-            self.sp_target_global = [1, 1]
-            p_target_global = self.sp_target_global
-            print("we will get:", p_target_global[0], p_target_global[1])
-            self.sp_tag = 1
+        if (self.sp_target_global[car_th]!=p_target):
+            if (p_target==None):p_target=self.sp_target_global[car_th]
+            else:
+                self.sp_target_global[car_th]=p_target
+                self.sp_tag[car_th]=0
+        #print("233",p_target[0], p_target[1],self.cars[car_th][1], self.cars[car_th][2])
+        if (clc(p_target[0], p_target[1],self.cars[car_th][1], self.cars[car_th][2]) < 400):
+            return 2
+        if (self.sp_tag[car_th] % 2000000 == 0):
             self.sp_init(car_th)
-            self.sp_follow_the_road(car_th,(self.cars[car_th][2], self.cars[car_th][1]), p_target_global)
-        # use RVO to changing the speed
-        self.sp_tag += 1
-        p_target_RVO = self.sp_RVO(car_th, self.sp_route[self.sp_route_th])
-        # (0,1)target point;(2) target velocity
+            self.sp_route_th[car_th]=0
+            if (self.sp_follow_the_road(car_th, (self.cars[car_th][2], self.cars[car_th][1]), p_target)==0):
+                return 0
 
+
+        while (self.sp_route_th[car_th] < self.sp_max_route_th[car_th] and
+               clc(self.sp_route[car_th][self.sp_route_th[car_th]][0], self.sp_route[car_th][self.sp_route_th[car_th]][1],
+                   self.cars[car_th][1], self.cars[car_th][2]) < 1600 or
+               self.sp_route_th[car_th] == self.sp_max_route_th[car_th] and
+               clc(self.sp_route[car_th][self.sp_route_th[car_th]][0], self.sp_route[car_th][self.sp_route_th[car_th]][1],
+                   self.cars[car_th][1], self.cars[car_th][2]) < 400):
+            self.sp_route_th[car_th] += 1
+        if (self.sp_route_th[car_th] > self.sp_max_route_th[car_th]):
+            return 2
+
+        self.sp_tag[car_th] += 1
+        p_target_RVO = self.sp_RVO(car_th, self.sp_route[car_th][self.sp_route_th[car_th]])
         self.sp_speed_changing(car_th, p_target_RVO)
+        return 1
+    def get_order(self):
 
+        def clc(x, y, xx, yy):  # 算范数的平方
+            return (x - xx) * (x - xx) + (y - yy) * (y - yy)
+        #print(self.cars[0][1],self.cars[0][2],self.sp_tar[0][self.sp_now[0]][0],self.sp_tar[self.sp_now[0]][1])
+        while (clc(self.cars[0][1],self.cars[0][2],self.sp_tar[0][self.sp_now[0]][0],self.sp_tar[0][self.sp_now[0]][1])<400):
+            self.sp_now[0]=(self.sp_now[0]+1)%4
+        while (clc(self.cars[1][1],self.cars[1][2],self.sp_tar[1][self.sp_now[1]][0],self.sp_tar[1][self.sp_now[1]][1])<400):
+            self.sp_now[1]=(self.sp_now[1]+1)%4
+        if (self.sp_follower(0,self.sp_tar[0][self.sp_now[0]])==0):
+            self.orders[0][0] = 0
+            self.orders[0][1] = 0
+            self.orders[0][2] = 0
+            print("car 0 find no path")
+        if (self.sp_follower(1,self.sp_tar[1][self.sp_now[1]])==0):
+            self.orders[1][0] = 0
+            self.orders[1][1] = 0
+            self.orders[1][2] = 0
+            print("car 1 find no path")
+
+        #self.sp_follower(1,[750,450])
     def reset(self):  # state(self.time, self.cars, self.compet_info, self.time <= 0)
         self.time = 10
         self.orders = np.zeros((4, 8), dtype='int8')
@@ -819,17 +839,6 @@ class kernal(object):  # gym.Env
                                 (0, 0, 0))
         self.screen.blit(info, (8, 389))
 
-    def get_order(self):
-        def clc(x, y, xx, yy):  # 算范数的平方
-            return (x - xx) * (x - xx) + (y - yy) * (y - yy)
-        #print(self.cars[0][1],self.cars[0][2],self.sp_tar[0][self.sp_now[0]][0],self.sp_tar[self.sp_now[0]][1])
-        #while (clc(self.cars[0][1],self.cars[0][2],self.sp_tar[0][self.sp_now[0]][0],self.sp_tar[0][self.sp_now[0]][1])<400):
-            #self.sp_now[0]=(self.sp_now[0]+1)%4
-        #while (clc(self.cars[1][1],self.cars[1][2],self.sp_tar[1][self.sp_now[1]][0],self.sp_tar[1][self.sp_now[1]][1])<400):
-            #self.sp_now[1]=(self.sp_now[1]+1)%4
-        #self.sp_follower(0,self.sp_tar[self.sp_now[0]])
-        #self.sp_follower(1,self.sp_tar[self.sp_now[1]])
-        self.sp_follower()
     def orders_to_acts(self, n):
         # turn orders to acts
         self.acts[n, 2] += self.orders[n, 0] * 1.5 / self.motion# self.motion=6
@@ -1051,6 +1060,27 @@ class kernal(object):  # gym.Env
 
     def save_record(self, file):
         np.save(file, self.memory)
+
+    def show_route(self):
+        img = np.zeros([470, 830, 3])
+        length1 = len(self.sp_route[0])
+        length2 = len(self.sp_route[1])
+
+        set1 = self.sp_route[0]
+        set2 = self.sp_route[1]
+
+        for index in range(length1):
+            cv.rectangle(img, (set1[index][0]-5, set1[index][1]-5), (set1[index][0]+5, set1[index][1]+5), (0, 0, 255), 3)
+            if index != length1 - 1:
+                cv.line(img, (set1[index][0], set1[index][1]), (set1[index+1][0], set1[index+1][1]), (0, 0, 255), 5)
+
+        for index in range(length2):
+            cv.circle(img, (set2[index][0], set2[index][1]), 10, (255, 0, 0), 3)
+            if index != length2 - 1:
+                cv.line(img, (set2[index][0], set2[index][1]), (set2[index+1][0], set2[index+1][1]), (255, 0, 0), 5)
+
+        cv.imshow("sp_route", img)
+        cv.waitKey(100)
 
 
 ''' important indexs
