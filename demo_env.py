@@ -1,6 +1,6 @@
 from kernel_for_RL import kernal
 import random
-env = kernal(car_num = 1, robot_id = 1, render = True, record = False)
+env = kernal(car_num = 4, robot_id = 1, render = True, record = False)
 def demo():
     total_reward = 0
     state = env.reset()

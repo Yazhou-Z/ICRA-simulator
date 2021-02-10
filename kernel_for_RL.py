@@ -124,7 +124,7 @@ class record_player(object):
             self.time = self.memory[i].time
             self.cars = self.memory[i].cars
             self.car_num = len(self.cars)
-            self.compet_info = self.memory[i].compet_info
+            #self.compet_info = self.memory[i].compet_info
             self.detect = self.memory[i].detect
             self.vision = self.memory[i].vision
             self.bullets = self.memory[i].bullets
@@ -189,12 +189,14 @@ class record_player(object):
                 for i in range(self.cars[n].size):
                     info = self.font.render('{}: {}'.format(tags[i], int(self.cars[n, i])), False, (0, 0, 0))
                     self.screen.blit(info, (8+n*100, 117+i*17))
+            '''
             info = self.font.render('red   supply: {}   bonus: {}   bonus_time: {}'.format(self.compet_info[0, 0], \
                                     self.compet_info[0, 1], self.compet_info[0, 3]), False, (0, 0, 0))
             self.screen.blit(info, (8, 372))
             info = self.font.render('blue   supply: {}   bonus: {}   bonus_time: {}'.format(self.compet_info[1, 0], \
                                 self.compet_info[1, 1], self.compet_info[1, 3]), False, (0, 0, 0))
             self.screen.blit(info, (8, 389))
+            '''
         pygame.display.flip()
 
     def check_points_wheel(self, car):
@@ -215,6 +217,94 @@ class record_player(object):
              [-18.5,  6], [18.5,  6],
              [-6.5, 30], [6.5, 30]])
         return [np.matmul(x, rotate_matrix) + car[1:3] for x in xs]
+
+class Move_Shoot:
+    def __init__(self, area, time, activation):
+       self.area = area
+       self.time = time
+       self.activation = activation 
+
+class RefereeSystem:
+    move = Move_Shoot(np.zeros(4, dtype='float32'), 0, None)
+    shoot = Move_Shoot(np.zeros(4, dtype='float32'), 0, None)
+    red_hp = Move_Shoot(np.zeros(4, dtype='float32'), 0, None)
+    blue_hp = Move_Shoot(np.zeros(4, dtype='float32'), 0, None)
+    red_bullet = Move_Shoot(np.zeros(4, dtype='float32'), 0, None)
+    blue_bullet = Move_Shoot(np.zeros(4, dtype='float32'), 0, None)
+    def __init__(self, special_area, time, cars):
+        self.special_area = special_area
+        self.red_blue_bonus_hp_bullet_area = np.zeros([4,4], dtype='float32') # red_hp, blue_hp, red_bullet, blue_bullet
+        self.red_blue_bonus_hp_bullet_sctivation = np.zeros([1,4], dtype=int)
+        self.time = time
+        self.cars = cars
+        # Initialize internal variables, define some variables at your convenience.
+        pass
+
+    def checkZone(self, car, bouns):
+        if car[1] >= bouns.area[0] and car[1] <= bouns.area[1] and car[2] >= bouns.area[2] and car[2] <= bouns.area[3] and bouns.activation != None :
+            bouns.activation = None
+            return True
+        return False
+        # TODO: Perform geometricall checking for the zone area and centroid of robot
+        # It Should be called after each robot's motion update
+        
+
+    def getMobility(self,car):
+        if car[1] >= self.move.area[0] and car[1] <= self.move.area[1] and car[2] >= self.move.area[2] and car[2] <= self.move.area[3] \
+            and self.move.activation :
+            self.move.time += 1
+            self.move.activation = None
+            return True
+        if self.move.time == 2000:
+            self.move.time = 0
+            return False
+        if not self.move.time:
+            self.move.time += 1
+            return True
+        return False        
+        # TODO: Return move eligibility
+        # It should be called before robot motion update
+
+    def getShootabiliy(self, car):
+        if car[1] >= self.shoot.area[0] and car[1] <= self.shoot.area[1] and car[2] >= self.shoot.area[2] and car[2] <= self.shoot.area[3] \
+            and self.shoot.activation:
+            self.shoot.time += 1
+            self.shoot.activation = None
+            return True
+        if self.shoot.time == 2000:
+            self.shoot.time = 0
+            return False
+        if not self.shoot.time:
+            self.shoot.time += 1
+            return True
+        return False 
+        # TODO: Return  shoot eligibility.
+        # It should be called before robot shooting execution
+
+    def _reset_bufzone(self):
+        # set the areas randomly
+        i = random.sample([0,1,2],3)
+        punish_areas = random.sample([self.special_area[i[0]], self.special_area[5-i[0]]],2)
+        self.move.area, self.shoot.area = punish_areas[0], punish_areas[1]
+        bonus_hp_areas = random.sample([self.special_area[i[1]],self.special_area[5-i[1]]],2)
+        self.red_hp.area, self.blue_hp.area = bonus_hp_areas[0], bonus_hp_areas[1]
+        bonus_bullet_areas = random.sample([self.special_area[i[2]],self.special_area[5-i[2]]],2)
+        self.red_bullet.area, self.blue_bullet.area = bonus_bullet_areas[0], bonus_bullet_areas[1]
+        # activate the areas
+        self.move.activation = 1
+        self.shoot.activation = 1
+        self.red_hp.activation = 1
+        self.blue_hp.activation = 1
+        self.red_bullet.activation = 1
+        self.blue_bullet.activation = 1
+        # TODO: Randomly shuffle the buffer zone while followinig the symmetric re
+
+    def update(self):
+        if not self.time % 60:
+            self._reset_bufzone()
+        
+        # TODO: Count time reshuffle the buffer zone; unfreeze cars and enable shooting
+        pass
 
 class kernal(object): # gym.Env
 
@@ -240,12 +330,12 @@ class kernal(object): # gym.Env
                                 [708.0, 808.0, 0.0, 100.0]],
                                 [[0.0, 100.0, 0.0, 100.0],
                                 [0.0, 100.0, 348.0, 448.0]]], dtype='float32')
-        self.special_area = np.array([[23.0, 77.0, 145.0, 193.0],
+        self.special_area = np.array([[591.0, 645.0, 141.0, 189.0],
                                 [731.0, 785.0, 255.0, 303.0], 
                                 [377.0, 431.0, 20.5, 68.5], 
                                 [377.0, 431.0, 379.5, 427.5],
                                 [163.0, 217.0, 259.0, 307.0], 
-                                [591.0, 645.0, 141.0, 189.0]], dtype='float32')
+                                [23.0, 77.0, 145.0, 193.0]], dtype='float32')
         self.barriers = np.array([[150.0, 230.0, 214.0, 234.0],
                                   [578.0, 658.0, 214.0, 234.0],
                                   [0.0, 100.0, 100.0, 120.0],
@@ -329,7 +419,6 @@ class kernal(object): # gym.Env
         self.orders = np.zeros((4, 8), dtype='int8')
         self.acts = np.zeros((self.car_num, 8),dtype='float32')
         self.obs = np.zeros((self.car_num, 17), dtype='float32')
-        self.compet_info = np.array([[2, 1, 0, 0], [2, 1, 0, 0]], dtype='int16')
         self.vision = np.zeros((self.car_num, self.car_num), dtype='int8')
         self.detect = np.zeros((self.car_num, self.car_num), dtype='int8')
         self.bullets = []
@@ -344,22 +433,15 @@ class kernal(object): # gym.Env
         self.cars = cars[0:self.car_num]
         self.prev_reward = 100
         self.cars.flatten()
-        self.compet_info.flatten()
         return self.step(None)[0]
 
     def step(self,orders):
-        '''
-        orders: [x(1,-1),y(1,-1),rotate(1,-1),yaw(1,-1),shoot(1,0),supply(1,0),shoot_mode(1,0)]
-        '''
-        #self.orders[self.n] = orders
-        #self.orders = orders
         for _ in range(10):
-            self.one_epoch() # np.flatten(self.compet_info)
-        self.compet_info.flatten()
+            self.one_epoch() 
         self.cars.flatten()
         reward = self.compute_reward()
         done = self.time <= 0
-        current_state = (self.time, self.cars, self.compet_info, self.detect, self.vision)
+        current_state = (self.time, self.cars, self.detect, self.vision)
         return current_state, reward, done, {}
 
     def compute_reward(self):
@@ -370,12 +452,38 @@ class kernal(object): # gym.Env
         # KO or win reward...
         return reward
 
-    def one_epoch(self):   
+    def one_epoch(self):  
+        referee = RefereeSystem(self.special_area, self.time, self.cars) 
         for n in range(self.car_num):
             if not self.epoch % 10:
+                if referee.getMobility(self.cars[n]):
+                    self.orders[n,0] = 0
+                    self.orders[n,1] = 0
+                    self.orders[n,2] = 0
+                if referee.getShootabiliy(self.cars[n]):
+                    self.orders[n,4] = 0
                 self.orders_to_acts(n)
             # move car one by one
             self.move_car(n)
+            # check bouns
+            for i in [referee.red_hp, referee.blue_hp, referee.red_bullet, referee.blue_bullet]:
+                if referee.checkZone(self.cars[n], i):
+                    if i == referee.red_hp:
+                        for ii in range(self.car_num):
+                            if self.cars[ii,0] == 0:
+                                self.cars[ii,6] += 200
+                    if i == referee.blue_hp:
+                        for ii in range(self.car_num):
+                            if self.cars[ii,0] == 1:
+                                self.cars[ii,6] += 200
+                    if i == referee.red_bullet:
+                        for ii in range(self.car_num):
+                            if self.cars[ii,0] ==0:
+                                self.cars[ii,10] +=100
+                    if i == referee.blue_bullet:
+                        for ii in range(self.car_num):
+                            if self.cars[ii,0] ==1:
+                                self.cars[ii,10] +=100
             if not self.epoch % 20:
                 if self.cars[n, 5] >= 720: # 5:枪口热量 6:血量
                     self.cars[n, 6] -= (self.cars[n, 5] - 720) * 40
@@ -388,11 +496,9 @@ class kernal(object): # gym.Env
             if not self.acts[n, 5]: self.acts[n, 4] = 0 # 5:连发 6:单发
         if not self.epoch % 200: # 200epoch = 1s
                 self.time -= 1
-                if not self.time % 60:
-                    self.compet_info[:, 0:3] = [2, 1, 0]
+                referee.update()
         self.get_camera_vision()
         self.get_lidar_vision()
-        self.stay_check()
         # move bullet one by one
         i = 0
         while len(self.bullets):
@@ -405,7 +511,8 @@ class kernal(object): # gym.Env
         bullets = []
         for i in range(len(self.bullets)):
             bullets.append(bullet(self.bullets[i].center, self.bullets[i].angle, self.bullets[i].speed, self.bullets[i].owner))
-        if self.record: self.memory.append(record(self.time, self.cars.copy(), self.compet_info.copy(), self.detect.copy(), self.vision.copy(), bullets))
+        #if self.record: self.memory.append(record(self.time, self.cars.copy(), self.compet_info.copy(), self.detect.copy(), self.vision.copy(), bullets))
+        if self.record: self.memory.append(record(self.time, self.cars.copy(), self.detect.copy(), self.vision.copy(), bullets))
         if self.render: self.update_display()
 
     def move_car(self, n):
@@ -482,16 +589,7 @@ class kernal(object): # gym.Env
             self.cars[n, 7] -= 1
             if self.cars[n, 7] == 0:
                 self.cars[n, 8] == 0
-        # check supply
-        if self.acts[n, 6]:
-            dis = np.abs(self.cars[n, 1:3] - [self.areas[int(self.cars[n, 0]), 1][0:2].mean(), \
-                                   self.areas[int(self.cars[n, 0]), 1][2:4].mean()]).sum()
-            if dis < 23 and self.compet_info[int(self.cars[n, 0]), 0] and not self.cars[n, 7]:
-                self.cars[n, 8] = 1
-                self.cars[n, 7] = 600 # 3 s
-                self.cars[n, 10] += 50
-                self.compet_info[int(self.cars[n, 0]), 0] -= 1
-
+    
     def move_bullet(self, n):
         '''
         move bullet No.n, if interface with wall, barriers or cars, return True, else False
@@ -515,8 +613,7 @@ class kernal(object): # gym.Env
                 or self.segment(points[0], points[1], [18.5, -5], [18.5, 6]) \
                 or self.segment(points[0], points[1], [-5, 30], [5, 30]) \
                 or self.segment(points[0], points[1], [-5, -30], [5, -30]):
-                    if self.compet_info[int(self.cars[i, 0]), 3]: self.cars[i, 6] -= 25
-                    else: self.cars[i, 6] -= 50
+                    self.cars[i, 6] -= 50
                     return True
                 if self.line_rect_check(points[0], points[1], [-18, -29, 18, 29]): return True
         return False
@@ -574,12 +671,14 @@ class kernal(object): # gym.Env
             for i in range(self.cars[n].size):
                 info = self.font.render('{}: {}'.format(tags[i], int(self.cars[n, i])), False, (0, 0, 0))
                 self.screen.blit(info, (8+n*100, 117+i*17))
+        '''
         info = self.font.render('red   supply: {}   bonus: {}   bonus_time: {}'.format(self.compet_info[0, 0], \
                                 self.compet_info[0, 1], self.compet_info[0, 3]), False, (0, 0, 0))
         self.screen.blit(info, (8, 372))
         info = self.font.render('blue   supply: {}   bonus: {}   bonus_time: {}'.format(self.compet_info[1, 0], \
                                 self.compet_info[1, 1], self.compet_info[1, 3]), False, (0, 0, 0))
-        self.screen.blit(info, (8, 389))
+        '''
+        #self.screen.blit(info, (8, 389))
 
     # Depreciated
     def get_order(self): 
@@ -670,21 +769,6 @@ class kernal(object): # gym.Env
     def get_map(self):
         return g_map(self.map_length, self.map_width, self.areas, self.barriers)
 
-    def stay_check(self): # check 防御加成， 要改
-        # check bonus stay
-        for n in range(self.cars.shape[0]):
-            a = self.areas[int(self.cars[n, 0]), 0]
-            if self.cars[n, 1] >= a[0] and self.cars[n, 1] <= a[1] and self.cars[n, 2] >= a[2] \
-            and self.cars[n, 2] <= a[3] and self.compet_info[int(self.cars[n, 0]), 1]:
-                self.cars[n, 11] += 1 # 1/200 s
-                if self.cars[n, 11] >= 1000: # 5s
-                    self.cars[n, 11] = 0
-                    self.compet_info[int(self.cars[n, 0]), 3] = 6000 # 30s
-            else: self.cars[n, 11] = 0
-        for i in range(2):
-            if self.compet_info[i, 3] > 0:
-                self.compet_info[i, 3] -= 1
-
     def cross(self, p1, p2, p3): # 叉乘
         # this part code came from: https://www.jianshu.com/p/a5e73dbc742a
         x1 = p2[0] - p1[0]
@@ -714,9 +798,6 @@ class kernal(object): # gym.Env
     def line_barriers_check(self, l1, l2):
         for b in self.barriers:
             sq = [b[0], b[2], b[1], b[3]]
-            if b == [386.3, 421.7, 206.3, 241.7]: 
-                p1, p2, p3, p4 = b[0], b[2], b[1], b[3]
-                if self.segment(l1, l2, p1, p2) or self.segment(l1, l2, p3, p4): return True
             if self.line_rect_check(l1, l2, sq): return True
         return False
 
