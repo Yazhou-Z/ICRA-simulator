@@ -247,7 +247,6 @@ class RefereeSystem:
         return False
         # TODO: Perform geometricall checking for the zone area and centroid of robot
         # It Should be called after each robot's motion update
-        
 
     def getMobility(self,car):
         if car[1] >= self.move.area[0] and car[1] <= self.move.area[1] and car[2] >= self.move.area[2] and car[2] <= self.move.area[3] \
@@ -346,7 +345,7 @@ class kernal(object): # gym.Env
                                   [638.0, 658.0, 0.0, 100.0],
                                   [386.3, 421.7, 206.3, 241.7]], dtype='float32') # barrier_horizcontal: B2, B8, B1, B9, B4, B6; barrier_vertical: B3, B7
 
-        self.prev_reward = 100
+        self.reward = None
 
 
         if render:
@@ -432,7 +431,6 @@ class kernal(object): # gym.Env
                          [0, 750, 450, 0, 0, 0, 2000, 0, 0, 1, 0, 0, 0, 0, 0]], dtype='float32')
         self.cars = cars[0:self.car_num]
         self.prev_reward = 100
-        self.cars.flatten()
         return self.step(None)[0]
 
     def step(self,orders):
@@ -440,16 +438,46 @@ class kernal(object): # gym.Env
             self.one_epoch() 
         self.cars.flatten()
         reward = self.compute_reward()
-        done = self.time <= 0
-        current_state = (self.time, self.cars, self.detect, self.vision)
-        return current_state, reward, done, {}
+        done = self.time <= 0 
+        # to be clearified
+
+
+        cars = self.cars.flatten()
+        detect = self.detect.flatten()
+        vision = self.vision.flatten()
+        state = (self.time, cars, detect, vision)
+        return state, reward, done, {}
 
     def compute_reward(self):
         reward = 0
-        shaping = 100
-        reward = shaping - self.prev_reward
-        self.prev_reward = reward
-        # KO or win reward...
+        #hyperparams to be designed...
+        a1 = 1
+        a2 = 1
+        a = 1
+        s0 = 1
+        x0 = 1
+        rew_KO = 1
+        rew_win = 1
+        #reward design
+        #design score
+        #红方：己方；蓝方：敌方
+        red_hp = 0
+        blue_hp = 0
+        for n in range(self.car_num):
+            if n % 2 != 0:
+                red_hp += self.cars[n, 6]
+            else:
+                blue_hp += self.cars[n, 6]
+        score = red_hp - blue_hp
+        # design reward for shooting SQ
+        Q = 240
+        Q0 = ((a*x0 + 2*a*Q) + (((a*x0 + 2*a*Q)**2 + 6*a) * (-s0 - (Q**2)*a - a*(x0**2)))**0.5)/3/a
+        #assume 1V1
+        x = self.cars[0, 5] 
+        sq = -a(Q-x)**2 + 2*a*Q0*(Q-x) - a*(x0**2) + 2*a*x0*Q0
+        # more work needed
+
+        reward = a1*score + a2*(rew_KO +rew_win) + sq
         return reward
 
     def one_epoch(self):  
@@ -484,12 +512,12 @@ class kernal(object): # gym.Env
                         for ii in range(self.car_num):
                             if self.cars[ii,0] ==1:
                                 self.cars[ii,10] +=100
-            if not self.epoch % 20:
-                if self.cars[n, 5] >= 720: # 5:枪口热量 6:血量
-                    self.cars[n, 6] -= (self.cars[n, 5] - 720) * 40
-                    self.cars[n, 5] = 720
-                elif self.cars[n, 5] > 360:
-                    self.cars[n, 6] -= (self.cars[n, 5] - 360) * 4
+            if not self.epoch % 20:# 10Hz为一周期结算
+                if self.cars[n, 5] >= 360: # 5:枪口热量 6:血量
+                    self.cars[n, 6] -= (self.cars[n, 5] - 360) * 40
+                    self.cars[n, 5] = 360
+                elif self.cars[n, 5] > 240:
+                    self.cars[n, 6] -= (self.cars[n, 5] - 240) * 4
                 self.cars[n, 5] -= 12 if self.cars[n, 6] >= 400 else 24
             if self.cars[n, 5] <= 0: self.cars[n, 5] = 0
             if self.cars[n, 6] <= 0: self.cars[n, 6] = 0
@@ -940,7 +968,9 @@ class kernal(object): # gym.Env
         np.save(file, self.memory)
             
             
-''' important indexs
+''' 
+
+important indexs
 areas_index = [[{'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}, # 0 bonus red
                 {'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}, # 1 supply red
                 {'border_x0': 0, 'border_x1': 1,'border_y0': 2,'border_y1': 3}, # 2 start 0 red
