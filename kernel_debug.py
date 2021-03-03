@@ -5,7 +5,8 @@ kernal v1.0
 import numpy as np
 import pygame
 import random 
-# import gym
+import gym
+from gym import spaces
 
 class bullet(object):
     def __init__(self, center, angle, speed, owner):
@@ -305,7 +306,7 @@ class RefereeSystem:
         # TODO: Count time reshuffle the buffer zone; unfreeze cars and enable shooting
         pass
 
-class kernal(object): # gym.Env
+class kernal(gym.Env): # gym.Env
 
     def __init__(self, car_num,  robot_id,render=False, record=True):# map, car, render
         
@@ -318,7 +319,7 @@ class kernal(object): # gym.Env
         self.rotate_motion = 4
         self.yaw_motion = 1
         self.camera_angle = 75 / 2
-        self.lidar_angle = 120 / 2
+        self.lidar_angle = 180 / 2
         self.move_discount = 0.6
         # above are params that can be challenged depended on situation
         self.map_length = 808
@@ -345,7 +346,17 @@ class kernal(object): # gym.Env
                                   [638.0, 658.0, 0.0, 100.0],
                                   [386.3, 421.7, 206.3, 241.7]], dtype='float32') # barrier_horizcontal: B2, B8, B1, B9, B4, B6; barrier_vertical: B3, B7
 
-        self.reward = None
+        self.reward = 0.0
+        self.action_space = spaces.Tuple((
+        spaces.Box(high = 1, low = -1, shape = (3,),dtype = int),
+        spaces.Box(high = 1, low = -1, shape = (3,),dtype = int),
+        spaces.Box(high = 1, low = -1, shape = (3,),dtype = int),
+        spaces.Box(high = 1, low = -1, shape = (3,),dtype = int),
+        spaces.Box(high = 1, low = 0, shape = (2,),dtype = int),
+        spaces.Box(high = 1, low = 0, shape = (2,),dtype = int),
+        spaces.Box(high = 1, low = 0, shape = (2,),dtype = int),
+        spaces.Box(high = 1, low = 0, shape = (2,),dtype = int)))
+        self.observation_space = spaces.Box(low = -180.0, high = 800.0, shape = (17, ), dtype = np.float32)
 
 
         if render:
@@ -412,14 +423,16 @@ class kernal(object): # gym.Env
             pygame.font.init()
             self.font = pygame.font.SysFont('info', 20)
             self.clock = pygame.time.Clock()
+        self.orders = np.zeros((self.car_num, 8), dtype='int8')
 
-    def reset(self): # state(self.time, self.cars, self.compet_info, self.time <= 0)
-        self.time = 180 
-        self.orders = np.zeros((4, 8), dtype='int8')
+    def reset(self): 
+        self.time = 180.0
+        self.orders = np.zeros((self.car_num, 8), dtype='int8')
         self.acts = np.zeros((self.car_num, 8),dtype='float32')
         self.obs = np.zeros((self.car_num, 17), dtype='float32')
         self.vision = np.zeros((self.car_num, self.car_num), dtype='int8')
         self.detect = np.zeros((self.car_num, self.car_num), dtype='int8')
+        self.observ = np.zeros((self.car_num, self.car_num), dtype='float32')
         self.bullets = []
         self.epoch = 0 
         self.n = 0
@@ -430,26 +443,28 @@ class kernal(object): # gym.Env
                          [1, 750, 50, 0, 0, 0, 2000, 0, 0, 1, 0, 0, 0, 0, 0],
                          [0, 750, 450, 0, 0, 0, 2000, 0, 0, 1, 0, 0, 0, 0, 0]], dtype='float32')
         self.cars = cars[0:self.car_num]
-        self.prev_reward = 100
-        return self.step(None)[0]
+        a = np.zeros((17, ), dtype='float32')
+        return a
 
-    def step(self,orders):
+    def step(self, orders):
+        self.orders = orders
         for _ in range(10):
             self.one_epoch() 
         self.cars.flatten()
         reward = self.compute_reward()
-        done = self.time <= 0 
-        # to be clearified
-
-
+        done = bool( self.time <= 0 )# to be clearified
         cars = self.cars.flatten()
-        detect = self.detect.flatten()
-        vision = self.vision.flatten()
-        state = (self.time, cars, detect, vision)
+        observ = self.observ.flatten()
+        observation = cars.tolist()
+        observation.append(self.time)
+
+        observation += observ.tolist()
+        state = np.array(observation, dtype=np.float32)
+        #to be continue:)
         return state, reward, done, {}
 
     def compute_reward(self):
-        reward = 0
+        reward = 0.0
         #hyperparams to be designed...
         a1 = 1
         a2 = 1
@@ -474,7 +489,7 @@ class kernal(object): # gym.Env
         Q0 = ((a*x0 + 2*a*Q) + (((a*x0 + 2*a*Q)**2 + 6*a) * (-s0 - (Q**2)*a - a*(x0**2)))**0.5)/3/a
         #assume 1V1
         x = self.cars[0, 5] 
-        sq = -a(Q-x)**2 + 2*a*Q0*(Q-x) - a*(x0**2) + 2*a*x0*Q0
+        sq = -a*(Q-x)**2 + 2*a*Q0*(Q-x) - a*(x0**2) + 2*a*x0*Q0
         # more work needed
 
         reward = a1*score + a2*(rew_KO +rew_win) + sq
@@ -482,51 +497,46 @@ class kernal(object): # gym.Env
 
     def one_epoch(self):  
         referee = RefereeSystem(self.special_area, self.time, self.cars) 
-        for n in range(self.car_num):
-            if not self.epoch % 10:
-                if referee.getMobility(self.cars[n]):
-                    self.orders[n,0] = 0
-                    self.orders[n,1] = 0
-                    self.orders[n,2] = 0
-                if referee.getShootabiliy(self.cars[n]):
-                    self.orders[n,4] = 0
-                self.orders_to_acts(n)
-            # move car one by one
-            self.move_car(n)
-            # check bouns
-            for i in [referee.red_hp, referee.blue_hp, referee.red_bullet, referee.blue_bullet]:
-                if referee.checkZone(self.cars[n], i):
-                    if i == referee.red_hp:
-                        for ii in range(self.car_num):
-                            if self.cars[ii,0] == 0:
-                                self.cars[ii,6] += 200
-                    if i == referee.blue_hp:
-                        for ii in range(self.car_num):
-                            if self.cars[ii,0] == 1:
-                                self.cars[ii,6] += 200
-                    if i == referee.red_bullet:
-                        for ii in range(self.car_num):
-                            if self.cars[ii,0] ==0:
-                                self.cars[ii,10] +=100
-                    if i == referee.blue_bullet:
-                        for ii in range(self.car_num):
-                            if self.cars[ii,0] ==1:
-                                self.cars[ii,10] +=100
-            if not self.epoch % 20:# 10Hz为一周期结算
-                if self.cars[n, 5] >= 360: # 5:枪口热量 6:血量
-                    self.cars[n, 6] -= (self.cars[n, 5] - 360) * 40
-                    self.cars[n, 5] = 360
-                elif self.cars[n, 5] > 240:
-                    self.cars[n, 6] -= (self.cars[n, 5] - 240) * 4
-                self.cars[n, 5] -= 12 if self.cars[n, 6] >= 400 else 24
-            if self.cars[n, 5] <= 0: self.cars[n, 5] = 0
-            if self.cars[n, 6] <= 0: self.cars[n, 6] = 0
-            if not self.acts[n, 5]: self.acts[n, 4] = 0 # 5:连发 6:单发
+        #for n in range(self.car_num):
+        n=0
+        if not self.epoch % 10:
+            self.orders_to_acts(n)
+        # move car one by one
+        self.move_car(n)
+        # check bouns
+        for i in [referee.red_hp, referee.blue_hp, referee.red_bullet, referee.blue_bullet]:
+            if referee.checkZone(self.cars[n], i):
+                if i == referee.red_hp:
+                    for ii in range(self.car_num):
+                        if self.cars[ii,0] == 0:
+                            self.cars[ii,6] += 200
+                if i == referee.blue_hp:
+                    for ii in range(self.car_num):
+                        if self.cars[ii,0] == 1:
+                            self.cars[ii,6] += 200
+                if i == referee.red_bullet:
+                    for ii in range(self.car_num):
+                        if self.cars[ii,0] ==0:
+                            self.cars[ii,10] +=100
+                if i == referee.blue_bullet:
+                    for ii in range(self.car_num):
+                        if self.cars[ii,0] ==1:
+                            self.cars[ii,10] +=100
+        if not self.epoch % 20:# 10Hz为一周期结算
+            if self.cars[n, 5] >= 360: # 5:枪口热量 6:血量
+                self.cars[n, 6] -= (self.cars[n, 5] - 360) * 40
+                self.cars[n, 5] = 360
+            elif self.cars[n, 5] > 240:
+                self.cars[n, 6] -= (self.cars[n, 5] - 240) * 4
+            self.cars[n, 5] -= 12 if self.cars[n, 6] >= 400 else 24
+        if self.cars[n, 5] <= 0: self.cars[n, 5] = 0
+        if self.cars[n, 6] <= 0: self.cars[n, 6] = 0
+        if referee.getShootabiliy(self.cars[n]): self.acts[n, 4] = 0
+        if not self.acts[n, 5]: self.acts[n, 4] = 0 # 5:连发 6:单发
         if not self.epoch % 200: # 200epoch = 1s
                 self.time -= 1
                 referee.update()
-        self.get_camera_vision()
-        self.get_lidar_vision()
+        self.get_lidar_camera_vision()
         # move bullet one by one
         i = 0
         while len(self.bullets):
@@ -544,7 +554,8 @@ class kernal(object): # gym.Env
         if self.render: self.update_display()
 
     def move_car(self, n):
-        if not self.cars[n, 7]:
+        referee = RefereeSystem(self.special_area, self.time, self.cars) 
+        if not referee.getMobility:
             # move chassis
             if self.acts[n, 0]:
                 p = self.cars[n, 3]
@@ -554,60 +565,63 @@ class kernal(object): # gym.Env
                 if self.check_interface(n):
                     self.acts[n, 0] = -self.acts[n, 0] * self.move_discount
                     self.cars[n, 3] = p
-            # move gimbal
-            if self.acts[n, 1]:
-                self.cars[n, 4] += self.acts[n, 1]
-                if self.cars[n, 4] > 90: self.cars[n, 4] = 90
-                if self.cars[n, 4] < -90: self.cars[n, 4] = -90
-            # print(self.acts[n, 7])
-            if self.acts[n, 7]:
-                if self.car_num > 1:
-                    select = np.where((self.vision[n] == 1))[0]
-                    if select.size:
-                        angles = np.zeros(select.size)
-                        for ii, i in enumerate(select):
-                            x, y = self.cars[i, 1:3] - self.cars[n, 1:3]
-                            angle = np.angle(x+y*1j, deg=True) - self.cars[i, 3]
-                            if angle >= 180: angle -= 360
-                            if angle <= -180: angle += 360
-                            if angle >= -self.theta and angle < self.theta:
-                                armor = self.get_armor(self.cars[i], 2)
-                            elif angle >= self.theta and angle < 180-self.theta:
-                                armor = self.get_armor(self.cars[i], 3)
-                            elif angle >= -180+self.theta and angle < -self.theta:
-                                armor = self.get_armor(self.cars[i], 1)
-                            else: armor = self.get_armor(self.cars[i], 0)
-                            x, y = armor - self.cars[n, 1:3]
-                            angle = np.angle(x+y*1j, deg=True) - self.cars[n, 4] - self.cars[n, 3]
-                            if angle >= 180: angle -= 360
-                            if angle <= -180: angle += 360
-                            angles[ii] = angle
-                        m = np.where(np.abs(angles) == np.abs(angles).min())
-                        self.cars[n, 4] += angles[m][0]
-                        if self.cars[n, 4] > 90: self.cars[n, 4] = 90
-                        if self.cars[n, 4] < -90: self.cars[n, 4] = -90
+        # move gimbal
+        if self.acts[n, 1]:
+            self.cars[n, 4] += self.acts[n, 1]
+            if self.cars[n, 4] > 90: self.cars[n, 4] = 90
+            if self.cars[n, 4] < -90: self.cars[n, 4] = -90
+        # print(self.acts[n, 7])
+    '''
+        if self.acts[n, 7]:
+            if self.car_num > 1:
+                select = np.where((self.vision[n] == 1))[0]
+                if select.size:
+                    angles = np.zeros(select.size)
+                    for ii, i in enumerate(select):
+                        x, y = self.cars[i, 1:3] - self.cars[n, 1:3]
+                        angle = np.angle(x+y*1j, deg=True) - self.cars[i, 3]
+                        if angle >= 180: angle -= 360
+                        if angle <= -180: angle += 360
+                        if angle >= -self.theta and angle < self.theta:
+                            armor = self.get_armor(self.cars[i], 2)
+                        elif angle >= self.theta and angle < 180-self.theta:
+                            armor = self.get_armor(self.cars[i], 3)
+                        elif angle >= -180+self.theta and angle < -self.theta:
+                            armor = self.get_armor(self.cars[i], 1)
+                        else: armor = self.get_armor(self.cars[i], 0)
+                        x, y = armor - self.cars[n, 1:3]
+                        angle = np.angle(x+y*1j, deg=True) - self.cars[n, 4] - self.cars[n, 3]
+                        if angle >= 180: angle -= 360
+                        if angle <= -180: angle += 360
+                        angles[ii] = angle
+                    m = np.where(np.abs(angles) == np.abs(angles).min())
+                    self.cars[n, 4] += angles[m][0]
+                    if self.cars[n, 4] > 90: self.cars[n, 4] = 90
+                    if self.cars[n, 4] < -90: self.cars[n, 4] = -90
             # move x and y
-            if self.acts[n, 2] or self.acts[n, 3]:
-                angle = np.deg2rad(self.cars[n, 3])
-                # x
-                p = self.cars[n, 1]
-                self.cars[n, 1] += (self.acts[n, 2]) * np.cos(angle) - (self.acts[n, 3]) * np.sin(angle)
-                if self.check_interface(n):
-                    self.acts[n, 2] = -self.acts[n, 2] * self.move_discount
-                    self.cars[n, 1] = p
-                # y
-                p = self.cars[n, 2]
-                self.cars[n, 2] += (self.acts[n, 2]) * np.sin(angle) + (self.acts[n, 3]) * np.cos(angle)
-                if self.check_interface(n):
-                    self.acts[n, 3] = -self.acts[n, 3] * self.move_discount
-                    self.cars[n, 2] = p
+            if not referee.getMobility:
+                if self.acts[n, 2] or self.acts[n, 3]:
+                    angle = np.deg2rad(self.cars[n, 3])
+                    # x
+                    p = self.cars[n, 1]
+                    self.cars[n, 1] += (self.acts[n, 2]) * np.cos(angle) - (self.acts[n, 3]) * np.sin(angle)
+                    if self.check_interface(n):
+                        self.acts[n, 2] = -self.acts[n, 2] * self.move_discount
+                        self.cars[n, 1] = p
+                    # y
+                    p = self.cars[n, 2]
+                    self.cars[n, 2] += (self.acts[n, 2]) * np.sin(angle) + (self.acts[n, 3]) * np.cos(angle)
+                    if self.check_interface(n):
+                        self.acts[n, 3] = -self.acts[n, 3] * self.move_discount
+                        self.cars[n, 2] = p
             # fire or not
             if self.acts[n, 4] and self.cars[n, 10]:
-                if self.cars[n, 9]:
-                    self.cars[n, 10] -= 1
-                    self.bullets.append(bullet(self.cars[n, 1:3], self.cars[n, 4]+self.cars[n, 3], self.bullet_speed, n))
-                    self.cars[n, 5] += self.bullet_speed
-                    self.cars[n, 9] = 0
+                if not referee.getShootabiliy:
+                    if self.cars[n, 9]:
+                        self.cars[n, 10] -= 1
+                        self.bullets.append(bullet(self.cars[n, 1:3], self.cars[n, 4]+self.cars[n, 3], self.bullet_speed, n))
+                        self.cars[n, 5] += self.bullet_speed
+                        self.cars[n, 9] = 0
                 else:
                     self.cars[n, 9] = 1
             else:
@@ -617,7 +631,7 @@ class kernal(object): # gym.Env
             self.cars[n, 7] -= 1
             if self.cars[n, 7] == 0:
                 self.cars[n, 8] == 0
-    
+        '''
     def move_bullet(self, n):
         '''
         move bullet No.n, if interface with wall, barriers or cars, return True, else False
@@ -707,8 +721,7 @@ class kernal(object): # gym.Env
                                 self.compet_info[1, 1], self.compet_info[1, 3]), False, (0, 0, 0))
         '''
         #self.screen.blit(info, (8, 389))
-
-    # Depreciated
+    '''
     def get_order(self): 
         # get order from controler
         pygame.init()
@@ -717,21 +730,21 @@ class kernal(object): # gym.Env
             if event.type == pygame.QUIT:
                 return True
         pressed = pygame.key.get_pressed()
-        #'''
+        
         if pressed[pygame.K_1]: self.n = 0
         if pressed[pygame.K_2]: self.n = 1
         if pressed[pygame.K_3]: self.n = 2
         if pressed[pygame.K_4]: self.n = 3
         
         self.orders[self.n] = 0
-        '''
+        
         order_name = random.choice([0,1,2,3,4,5,6,7])
         if order_name < 4:
             order  = random.choice([1,-1])
         else:
             order = random.choice([0,1])
         self.orders[self.n,order_name] += order
-        '''
+        
         if pressed[pygame.K_w]: self.orders[self.n, 0] += 1 # Forward
         if pressed[pygame.K_s]: self.orders[self.n, 0] -= 1 # Backward
         if pressed[pygame.K_q]: self.orders[self.n, 1] -= 1 # Left rotate
@@ -748,48 +761,49 @@ class kernal(object): # gym.Env
         else: self.orders[self.n, 6] = 0
         if pressed[pygame.K_n]: self.orders[self.n, 7] = 1 
         else: self.orders[self.n, 7] = 0
-       # '''
+        
         if pressed[pygame.K_TAB]: self.dev = True
         else: self.dev = False
         return False
-
+    '''
     def orders_to_acts(self, n):
         # turn orders to acts
-        self.acts[n, 2] += self.orders[n, 0] * 1.5 / self.motion
-        if self.orders[n, 0] == 0:
+        breakpoint()
+        self.acts[n, 2] += self.orders[0] * 1.5 / self.motion
+        if self.orders[0] == 0:
             if self.acts[n, 2] > 0: self.acts[n, 2] -= 1.5 / self.motion
             if self.acts[n, 2] < 0: self.acts[n, 2] += 1.5 / self.motion
         if abs(self.acts[n, 2]) < 1.5 / self.motion: self.acts[n, 2] = 0
         if self.acts[n, 2] >= 1.5: self.acts[n, 2] = 1.5
         if self.acts[n, 2] <= -1.5: self.acts[n, 2] = -1.5
         # x, y
-        self.acts[n, 3] += self.orders[n, 1] * 1 / self.motion
-        if self.orders[n, 1] == 0:
+        self.acts[n, 3] += self.orders[1] * 1 / self.motion
+        if self.orders[1] == 0:
             if self.acts[n, 3] > 0: self.acts[n, 3] -= 1 / self.motion
             if self.acts[n, 3] < 0: self.acts[n, 3] += 1 / self.motion
-        if abs(self.acts[n, 3]) < 1 / self.motion: self.acts[n, 3] = 0
-        if self.acts[n, 3] >= 1: self.acts[n, 3] = 1
-        if self.acts[n, 3] <= -1: self.acts[n, 3] = -1
+        if abs(self.acts[3]) < 1 / self.motion: self.acts[n, 3] = 0
+        if self.acts[3] >= 1: self.acts[n, 3] = 1
+        if self.acts[3] <= -1: self.acts[n, 3] = -1
         # rotate chassis
-        self.acts[n, 0] += self.orders[n, 2] * 1 / self.rotate_motion
-        if self.orders[n, 2] == 0:
+        self.acts[n, 0] += self.orders[2] * 1 / self.rotate_motion
+        if self.orders[2] == 0:
             if self.acts[n, 0] > 0: self.acts[n, 0] -= 1 / self.rotate_motion
             if self.acts[n, 0] < 0: self.acts[n, 0] += 1 / self.rotate_motion
         if abs(self.acts[n, 0]) < 1 / self.rotate_motion: self.acts[n, 0] = 0
         if self.acts[n, 0] > 1: self.acts[n, 0] = 1
         if self.acts[n, 0] < -1: self.acts[n, 0] = -1
         # rotate yaw
-        self.acts[n, 1] += self.orders[n, 3] / self.yaw_motion
-        if self.orders[n, 3] == 0:
+        self.acts[n, 1] += self.orders[3] / self.yaw_motion
+        if self.orders[3] == 0:
             if self.acts[n, 1] > 0: self.acts[n, 1] -= 1 / self.yaw_motion
             if self.acts[n, 1] < 0: self.acts[n, 1] += 1 / self.yaw_motion
         if abs(self.acts[n, 1]) < 1 / self.yaw_motion: self.acts[n, 1] = 0
         if self.acts[n, 1] > 3: self.acts[n, 1] = 3
         if self.acts[n, 1] < -3: self.acts[n, 1] = -3
-        self.acts[n, 4] = self.orders[n, 4]
-        self.acts[n, 6] = self.orders[n, 5]
-        self.acts[n, 5] = self.orders[n, 6]
-        self.acts[n, 7] = self.orders[n, 7]
+        self.acts[n, 4] = self.orders[4]
+        self.acts[n, 6] = self.orders[5]
+        self.acts[n, 5] = self.orders[6]
+        self.acts[n, 7] = self.orders[7]
 
     def set_car_loc(self, n, loc):
         self.cars[n, 1:3] = loc
@@ -837,7 +851,7 @@ class kernal(object): # gym.Env
             if self.segment(l1, l2, p1, p2) or self.segment(l1, l2, p3, p4): return True
         return False
 
-    def get_lidar_vision(self): 
+    def get_lidar_vision(self) : 
         for n in range(self.car_num):
             for i in range(self.car_num-1):
                 x, y = self.cars[n-i-1, 1:3] - self.cars[n, 1:3]
@@ -871,6 +885,16 @@ class kernal(object): # gym.Env
                     else: self.vision[n, n-i-1] = 1
                 else: self.vision[n, n-i-1] = 0
 
+    def get_lidar_camera_vision(self):
+        self.get_camera_vision()
+        self.get_lidar_vision()
+        for n in range(self.car_num):
+            for i in range(self.car_num-1):
+                if self.vision[n, n-i-1] == 1 or self.detect[n, n-i-1] == 1:
+                    self.observ[n, n-i-1] = 1.0
+                else:
+                    self.observ[n, n-i-1] = 0.0
+        
     def transfer_to_car_coordinate(self, points, n):
         pan_vecter = -self.cars[n, 1:3]
         rotate_matrix = np.array([[np.cos(np.deg2rad(self.cars[n, 3]+90)), -np.sin(np.deg2rad(self.cars[n, 3]+90))],
