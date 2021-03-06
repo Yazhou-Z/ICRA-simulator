@@ -4,17 +4,8 @@ from gym import spaces
 class Space:
     def __init__(self):
         # actrually, its "orders"
-        self.action_space = spaces.Tuple([
-        spaces.Box(high = 1, low = -1, shape = (3,),dtype = int),
-        spaces.Box(high = 1, low = -1, shape = (3,),dtype = int),
-        spaces.Box(high = 1, low = -1, shape = (3,),dtype = int),
-        spaces.Box(high = 1, low = -1, shape = (3,),dtype = int),
-        spaces.Box(high = 1, low = 0, shape = (2,),dtype = int),
-        spaces.Box(high = 1, low = 0, shape = (2,),dtype = int),
-        spaces.Box(high = 1, low = 0, shape = (2,),dtype = int),
-        spaces.Box(high = 1, low = 0, shape = (2,),dtype = int)])
-        # actrually, its "orders"
-        self.observation_space = spaces.Box(low = -180.0, high = 800.0, shape = (19, ), dtype = np.float32)
+        self.action_space = spaces.Box(high = 1, low = -1, shape = (8,),dtype = int)
+        self.observation_space = spaces.Box(low = -180.0, high = 2000.0, shape = (17, ), dtype = np.float32)
 '''
         self.action_space = spaces.Tuple([
         spaces.Discrete(3),

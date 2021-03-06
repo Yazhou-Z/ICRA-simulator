@@ -3,6 +3,7 @@
 kernal v1.0
 '''
 import numpy as np
+from numpy.core.arrayprint import dtype_is_implied
 import pygame
 import random 
 import gym
@@ -347,16 +348,8 @@ class kernal(gym.Env): # gym.Env
                                   [386.3, 421.7, 206.3, 241.7]], dtype='float32') # barrier_horizcontal: B2, B8, B1, B9, B4, B6; barrier_vertical: B3, B7
 
         self.reward = 0.0
-        self.action_space = spaces.Tuple((
-        spaces.Box(high = 1, low = -1, shape = (3,),dtype = int),
-        spaces.Box(high = 1, low = -1, shape = (3,),dtype = int),
-        spaces.Box(high = 1, low = -1, shape = (3,),dtype = int),
-        spaces.Box(high = 1, low = -1, shape = (3,),dtype = int),
-        spaces.Box(high = 1, low = 0, shape = (2,),dtype = int),
-        spaces.Box(high = 1, low = 0, shape = (2,),dtype = int),
-        spaces.Box(high = 1, low = 0, shape = (2,),dtype = int),
-        spaces.Box(high = 1, low = 0, shape = (2,),dtype = int)))
-        self.observation_space = spaces.Box(low = -180.0, high = 800.0, shape = (17, ), dtype = np.float32)
+        self.action_space = spaces.Box(high = 1, low = -1, shape = (8,),dtype = int)
+        self.observation_space = spaces.Box(low = -180.0, high = 2000.0, shape = (17, ), dtype = np.float32)
 
 
         if render:
@@ -427,7 +420,7 @@ class kernal(gym.Env): # gym.Env
 
     def reset(self): 
         self.time = 180.0
-        self.orders = np.zeros((self.car_num, 8), dtype='int8')
+        self.orders = np.zeros((8,), dtype='int8')
         self.acts = np.zeros((self.car_num, 8),dtype='float32')
         self.obs = np.zeros((self.car_num, 17), dtype='float32')
         self.vision = np.zeros((self.car_num, self.car_num), dtype='int8')
@@ -457,14 +450,12 @@ class kernal(gym.Env): # gym.Env
         observ = self.observ.flatten()
         observation = cars.tolist()
         observation.append(self.time)
-
         observation += observ.tolist()
-        state = np.array(observation, dtype=np.float32)
+        #state = np.array(observation, dtype=np.float32)
         #to be continue:)
-        return state, reward, done, {}
+        return np.array(observation, dtype=np.float32), reward, done, {}
 
     def compute_reward(self):
-        reward = 0.0
         #hyperparams to be designed...
         a1 = 1
         a2 = 1
@@ -492,7 +483,8 @@ class kernal(gym.Env): # gym.Env
         sq = -a*(Q-x)**2 + 2*a*Q0*(Q-x) - a*(x0**2) + 2*a*x0*Q0
         # more work needed
 
-        reward = a1*score + a2*(rew_KO +rew_win) + sq
+        #reward = a1*score + a2*(rew_KO +rew_win) + sq
+        reward = 0.0
         return reward
 
     def one_epoch(self):  
@@ -631,7 +623,7 @@ class kernal(gym.Env): # gym.Env
             self.cars[n, 7] -= 1
             if self.cars[n, 7] == 0:
                 self.cars[n, 8] == 0
-        '''
+    '''
     def move_bullet(self, n):
         '''
         move bullet No.n, if interface with wall, barriers or cars, return True, else False
@@ -767,8 +759,9 @@ class kernal(gym.Env): # gym.Env
         return False
     '''
     def orders_to_acts(self, n):
+        for i in range(4):
+            self.orders[i] = np.clip(self.orders[i], 0, 1)
         # turn orders to acts
-        breakpoint()
         self.acts[n, 2] += self.orders[0] * 1.5 / self.motion
         if self.orders[0] == 0:
             if self.acts[n, 2] > 0: self.acts[n, 2] -= 1.5 / self.motion
@@ -781,9 +774,9 @@ class kernal(gym.Env): # gym.Env
         if self.orders[1] == 0:
             if self.acts[n, 3] > 0: self.acts[n, 3] -= 1 / self.motion
             if self.acts[n, 3] < 0: self.acts[n, 3] += 1 / self.motion
-        if abs(self.acts[3]) < 1 / self.motion: self.acts[n, 3] = 0
-        if self.acts[3] >= 1: self.acts[n, 3] = 1
-        if self.acts[3] <= -1: self.acts[n, 3] = -1
+        if abs(self.acts[n,3]) < 1 / self.motion: self.acts[n, 3] = 0
+        if self.acts[n,3] >= 1: self.acts[n, 3] = 1
+        if self.acts[n,3] <= -1: self.acts[n, 3] = -1
         # rotate chassis
         self.acts[n, 0] += self.orders[2] * 1 / self.rotate_motion
         if self.orders[2] == 0:
@@ -894,7 +887,7 @@ class kernal(gym.Env): # gym.Env
                     self.observ[n, n-i-1] = 1.0
                 else:
                     self.observ[n, n-i-1] = 0.0
-        
+       
     def transfer_to_car_coordinate(self, points, n):
         pan_vecter = -self.cars[n, 1:3]
         rotate_matrix = np.array([[np.cos(np.deg2rad(self.cars[n, 3]+90)), -np.sin(np.deg2rad(self.cars[n, 3]+90))],

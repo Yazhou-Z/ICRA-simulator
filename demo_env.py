@@ -1,5 +1,5 @@
 
-from kernel_for_RL import kernal
+from kernel_debug import kernal
 env = kernal(car_num = 2, robot_id = 1, render = True, record = False)
 def demo():
     total_reward = 0
