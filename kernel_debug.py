@@ -26,11 +26,12 @@ class record(object):
         self.bullets = bullets
 
 class g_map(object):
-    def __init__(self, length, width, areas, barriers):
+    def __init__(self, length, width, areas, barriers, special_area):
         self.length = length
         self.width = width
         self.areas = areas
         self.barriers = barriers
+        self.special_area = special_area
 
 class record_player(object):
     def __init__(self):
@@ -477,14 +478,12 @@ class kernal(gym.Env): # gym.Env
         score = red_hp - blue_hp
         # design reward for shooting SQ
         Q = 240
-        Q0 = ((a*x0 + 2*a*Q) + (((a*x0 + 2*a*Q)**2 + 6*a) * (-s0 - (Q**2)*a - a*(x0**2)))**0.5)/3/a
+        Q0 = (-(2*a*x0 + 4*a*Q) + ((4*a*Q+2*a*x0)**2 + 12*a*(-a*Q*Q+a*x0*x0-s0))**0.5)/-6/a
         #assume 1V1
         x = self.cars[0, 5] 
         sq = -a*(Q-x)**2 + 2*a*Q0*(Q-x) - a*(x0**2) + 2*a*x0*Q0
         # more work needed
-
-        #reward = a1*score + a2*(rew_KO +rew_win) + sq
-        reward = 0.0
+        reward = a1*score + a2*(rew_KO +rew_win) + sq
         return reward
 
     def one_epoch(self):  
@@ -802,7 +801,7 @@ class kernal(gym.Env): # gym.Env
         self.cars[n, 1:3] = loc
 
     def get_map(self):
-        return g_map(self.map_length, self.map_width, self.areas, self.barriers)
+        return g_map(self.map_length, self.map_width, self.areas, self.barriers, self.special_area)
 
     def cross(self, p1, p2, p3): # 叉乘
         # this part code came from: https://www.jianshu.com/p/a5e73dbc742a
