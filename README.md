@@ -14,7 +14,7 @@
 
 [map_parameter](#map_parameter)
 
-<img alt="Real" src="https://user-images.githubusercontent.com/76484768/129831488-82dedc44-dd88-4dab-a2f7-318dcf039802.jpg" div align=left />
+<img width = "2880" alt="Real" src="https://user-images.githubusercontent.com/76484768/129831488-82dedc44-dd88-4dab-a2f7-318dcf039802.jpg" div align=left />
 
 <img alt="Simulator" src="https://user-images.githubusercontent.com/76484768/129832269-9583bc22-6f19-4d9c-b954-a7c28477e6de.png"  div align=left />
 
