@@ -1,5 +1,7 @@
 # Simulator😄
 
+**This is a 2D simulator for RoboMaster AI Challenge, the environment for the training of reinforcement learning The simulation is able to achieve efficient collision detection and significantly accelerated reinforcement learning.**
+
 [action](#action)
 
 [observation](#observation)
@@ -11,6 +13,11 @@
 [punish&bonus](#punish&bonus)
 
 [map_parameter](#map_parameter)
+
+![cb88efaa382167848c285826ea56124](https://user-images.githubusercontent.com/76484768/129831464-d8517a16-b431-4170-b3af-07fced416d3b.jpg =288*180)
+
+
+<img src="https://user-images.githubusercontent.com/76484768/129831488-82dedc44-dd88-4dab-a2f7-318dcf039802" width = 20% height = 20% div align=right />
 
 ## action
 
