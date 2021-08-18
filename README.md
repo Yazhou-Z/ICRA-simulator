@@ -14,11 +14,8 @@
 
 [map_parameter](#map_parameter)
 
-![cb88efaa382167848c285826ea56124](https://user-images.githubusercontent.com/76484768/129831464-d8517a16-b431-4170-b3af-07fced416d3b.jpg =288*180)
-
-
-<img src="https://user-images.githubusercontent.com/76484768/129831488-82dedc44-dd88-4dab-a2f7-318dcf039802" width = 20% height = 20% div align=right />
-
+<img src="https://user-images.githubusercontent.com/76484768/129831488-82dedc44-dd88-4dab-a2f7-318dcf039802.jpg" width = 20% height = 20% div align=right />
+![b0c61458e226172bcf9961efeca6fb8](https://user-images.githubusercontent.com/76484768/129832098-58cdaa22-d660-42e7-bd20-3fc046a51a8d.jpg)
 ## action
 
 Called `orders` in kernel.
