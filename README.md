@@ -14,11 +14,11 @@
 
 [map_parameter](#map_parameter)
 
-<img alt="Real" src="https://user-images.githubusercontent.com/76484768/129831488-82dedc44-dd88-4dab-a2f7-318dcf039802.jpg" width = 60% height = 60% div align=left />
+<img alt="Real" src="https://user-images.githubusercontent.com/76484768/129831488-82dedc44-dd88-4dab-a2f7-318dcf039802.jpg" width = 80% height = 80% div align=left />
 
-<img alt="Simulator" src="https://user-images.githubusercontent.com/76484768/129832269-9583bc22-6f19-4d9c-b954-a7c28477e6de.png" width = 60% height = 60% div align=left />
+<img alt="Simulator" src="https://user-images.githubusercontent.com/76484768/129832269-9583bc22-6f19-4d9c-b954-a7c28477e6de.png" width = 80% height = 80% div align=left />
 
-<img width="1440" alt="053900aa88262dec18e18d70dea4fb4" src="https://user-images.githubusercontent.com/76484768/129832420-b8b1738f-0bc4-4a0f-9229-5c11aeec126b.jpg"  width = 60% height = 60% div align=left />
+<img alt="053900aa88262dec18e18d70dea4fb4" src="https://user-images.githubusercontent.com/76484768/129832420-b8b1738f-0bc4-4a0f-9229-5c11aeec126b.jpg"  width = 80% height = 80% div align=left />
 
 ## action
 
