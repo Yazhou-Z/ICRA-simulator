@@ -1,6 +1,6 @@
 # Simulator😄
 
-This is a 2D simulator for RoboMaster AI Challenge, the environment for the training of reinforcement learning. The simulation is able to achieve efficient collision detection and significantly accelerated reinforcement learning.
+**This is a 2D simulator for RoboMaster AI Challenge, the environment for the training of reinforcement learning. The simulation is able to achieve efficient collision detection and significantly accelerated reinforcement learning.**
 
 [action](#action)
 
